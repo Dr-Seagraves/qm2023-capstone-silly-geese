@@ -15,9 +15,12 @@ What is the relationship between firms' lobbying expenditures and their subseque
 
 
 3. Empirical Direction 
-Data Prep:
-Analysis: 
-Identification/Strategy:
+Data Prep: Collect annual firm-level lobbying spending data and firm financial data (Revenue, net income, assets, industry, year)
+Analysis: Start with descriptive statistics for lobbying expenditure and profitability; visualize trends over time in average lobbying expenditure; estimate firm and year fixed-effects models to focus on within-firm changes over time
+Identification/Strategy: Primary strategy: estimate within-firm associations using firm and year fixed effects, comparing a firm to itself over time
+Key Concern: reverse causality (more profitable firms may spend more on lobbying) so include lagged lobbying expenditure as a main specification
+Control for confounding factors: firm size, leverage, industry trends, and macro year shocks
+Interpret results as associations unless stronger exogenous variation is introduced 
 
 
 - **code/** — Python scripts and notebooks. Use `config_paths.py` for paths.
