@@ -5,6 +5,20 @@
 Semester-long capstone for Statistics II: Data Analytics.
 
 ## Project Structure
+1. Planned Datasets
+Dataset A:
+
+
+2. Preliminary Research Question 
+What is the relationship between firms' lobbying expenditures and their subsequent profitability?
+
+
+
+3. Empirical Direction 
+Data Prep:
+Analysis: 
+Identification/Strategy:
+
 
 - **code/** — Python scripts and notebooks. Use `config_paths.py` for paths.
 - **data/raw/** — Original data (read-only)
