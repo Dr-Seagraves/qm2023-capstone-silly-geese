@@ -6,7 +6,8 @@ Semester-long capstone for Statistics II: Data Analytics.
 
 ## Project Structure
 1. Planned Datasets
-Dataset A:
+Dataset A: "Clients.csv" in raw folder. Plan to use the information to track lobbying expenditures.
+Dataset B: Pending. Needed to track firm profits.
 
 
 2. Preliminary Research Question 
