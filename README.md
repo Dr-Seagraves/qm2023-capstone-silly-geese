@@ -6,8 +6,13 @@ Semester-long capstone for Statistics II: Data Analytics.
 
 ## Project Structure
 1. Planned Datasets
-Dataset A: "Clients.csv" in raw folder. Plan to use the information to track lobbying expenditures.
-Dataset B: Pending. Needed to track firm profits.
+Dataset A: Primary Dataset: Lobbying Data
+- **File:** data/processed/lobbying_clean.csv
+- **Unit of Observation:** firm-year
+- **Key Columns:** gvkey, year, lobbying_spend
+- **Source:** Senate Lobbying Disclosure Reports (merged with clients.csv for gvkey mapping)
+- **Notes:** Aggregated total lobbying expenditures per firm per year; amendments and no-activity filings removed
+Dataset B: Pending. Needed to track firm profits. (Revenue, net income, assets, industry, year)
 
 
 2. Preliminary Research Question 
@@ -16,7 +21,7 @@ What is the relationship between firms' lobbying expenditures and their subseque
 
 
 3. Empirical Direction 
-Data Prep: Collect annual firm-level lobbying spending data and firm financial data (Revenue, net income, assets, industry, year)
+Data Prep: Use lobbying_clean.csv for annual firm-level lobbying spending; merge with firm financial data once sourced (Revenue, net income, assets, industry, year)
 Analysis: Start with descriptive statistics for lobbying expenditure and profitability; visualize trends over time in average lobbying expenditure; estimate firm and year fixed-effects models to focus on within-firm changes over time
 Identification/Strategy: Primary strategy: estimate within-firm associations using firm and year fixed effects, comparing a firm to itself over time
 Key Concern: reverse causality (more profitable firms may spend more on lobbying) so include lagged lobbying expenditure as a main specification
