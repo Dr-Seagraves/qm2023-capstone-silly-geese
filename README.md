@@ -6,13 +6,13 @@ Semester-long capstone for Statistics II: Data Analytics.
 
 ## Project Structure
 1. Planned Datasets
-Dataset A: Primary Dataset: Lobbying Data
+- Dataset A: Primary Dataset: Lobbying Data
 - **File:** data/processed/lobbying_clean.csv
 - **Unit of Observation:** firm-year
 - **Key Columns:** gvkey, year, lobbying_spend
 - **Source:** Senate Lobbying Disclosure Reports (merged with clients.csv for gvkey mapping)
 - **Notes:** Aggregated total lobbying expenditures per firm per year; amendments and no-activity filings removed
-Dataset B: Pending. Needed to track firm profits. (Revenue, net income, assets, industry, year)
+- Dataset B: Pending. Needed to track firm profits. (Revenue, net income, assets, industry, year)
 
 
 2. Preliminary Research Question 
