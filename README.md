@@ -13,11 +13,22 @@ Semester-long capstone for Statistics II: Data Analytics.
 - **Source:** Senate Lobbying Disclosure Reports (merged with clients.csv for gvkey mapping)
 - **Notes:** Aggregated total lobbying expenditures per firm per year; amendments and no-activity filings removed
 -
-- Dataset B: Pending. Needed to track firm profits. (Revenue, net income, assets, industry, year)
+- Dataset B: Firm Financials
+
+- **File:** data/processed/financials_clean.csv
+- **Unit of Observation:** firm-year 
+- **Source**: SEC XBRL quarterly filings (Q4 2010–2020)
+- **Key Columns:** cik, name, year, Assets, NetIncomeLoss, Revenues
+- **Purpose:** Track firm profitability and other financial metrics
+- **Notes**: 
+  - Only 10-K filings were included
+  - Only USD values retained
+  - Merged with lobbying_clean.csv on year for Milestone 1
+  - A proper firm-level merge (gvkey ↔ cik) will be done in later analysis
 
 
 2. Preliminary Research Question 
-What is the relationship between firms' lobbying expenditures and their subsequent profitability?
+**What is the relationship between firms' lobbying expenditures and their subsequent profitability?**
 
 
 
