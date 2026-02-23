@@ -1,0 +1,5 @@
+__pycache__/
+*.py[cod]
+
+# Large local raw extracts (do not version)
+data/raw/sec_financial_statement_data_sets/
