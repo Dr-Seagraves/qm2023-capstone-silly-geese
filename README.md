@@ -7,12 +7,13 @@ Semester-long capstone for Statistics II: Data Analytics.
 ## Project Structure
 1. Planned Datasets
 - Dataset A: Primary Dataset: Lobbying Data
+
 - **File:** data/processed/lobbying_clean.csv
 - **Unit of Observation:** firm-year
 - **Key Columns:** gvkey, year, lobbying_spend
 - **Source:** Senate Lobbying Disclosure Reports (merged with clients.csv for gvkey mapping)
 - **Notes:** Aggregated total lobbying expenditures per firm per year; amendments and no-activity filings removed
--
+
 - Dataset B: Firm Financials
 
 - **File:** data/processed/financials_clean.csv
@@ -25,6 +26,18 @@ Semester-long capstone for Statistics II: Data Analytics.
   - Only USD values retained
   - Merged with lobbying_clean.csv on year for Milestone 1
   - A proper firm-level merge (gvkey ↔ cik) will be done in later analysis
+- **Constructed:** ROA = NetIncomeLoss / Assets
+
+- **Merging Strategy:**
+  - Created CIK-GVKEY Crosswalk (cik_gvkey_crosswalk.csv)
+  - Merged lobbying and financials by firm identifier and year
+  - Created:
+    - merged_financials_lobbying_balanced.csv
+    - merged_financials_lobbying.csv
+
+- **Outputs:**
+  - Visualizations in /reports/figures
+  - Clean data panel dataset in /data/final
 
 
 2. Preliminary Research Question 
