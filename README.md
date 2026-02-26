@@ -4,6 +4,8 @@
 
 Semester-long capstone for Statistics II: Data Analytics.
 
+Team Members: Alycia Reji, Gracie Vivion, Shelby Howard, and Daniz Mammadova
+
 ## Project Structure
 1. Planned Datasets
 - Dataset A: Primary Dataset: Lobbying Data
@@ -52,6 +54,77 @@ Identification/Strategy: Primary strategy: estimate within-firm associations usi
 Key Concern: reverse causality (more profitable firms may spend more on lobbying) so include lagged lobbying expenditure as a main specification
 Control for confounding factors: firm size, leverage, industry trends, and macro year shocks
 Interpret results as associations unless stronger exogenous variation is introduced 
+
+
+## How to Reproduce the Data Pipeline:
+
+  This project constructs a firm-year panel dataset linking firm lobbying expenditures to financial performance using SEC financial statement data.
+
+  All scripts should be run from the project root directory.
+
+1. Install Required Packages
+
+Install the necessary Python packages:
+pip install pandas numpy statsmodels matplotlib requests
+
+2. Build Financial Dataset (SEC Data)
+
+Construct the cleaned firm-year financial dataset from SEC Q4 filings (2010–2020):
+python code/build_financials.py
+  This script:
+  - Processes SEC financial statement data
+  - Extracts Assets, NetIncomeLoss, and Revenues
+  - Aggregates to the firm-year level
+Output:
+data/processed/financials_clean.csv
+
+3. Build Lobbying Dataset
+
+Construct firm-year lobbying expenditure totals:
+python code/fetch_lobbying_data.py
+This script:
+  - Aggregates lobbying reports to the firm-year level
+Output:
+data/processed/lobbying_clean.csv
+
+4. Create CIK–GVKEY Crosswalk and Merge Datasets
+
+Merge financial and lobbying data:
+python code/create_crosswalk_and_merge.py
+This script:
+  - Builds a CIK–GVKEY crosswalk using company name matching
+  - Merges financials and lobbying data
+  - Constructs Return on Assets (ROA):
+        𝑅𝑂𝐴 = 𝑁𝑒𝑡𝐼𝑛𝑐𝑜𝑚𝑒𝐿𝑜𝑠𝑠 / 𝐴𝑠𝑠𝑒𝑡𝑠
+Outputs:
+data/processed/cik_gvkey_crosswalk.csv
+data/final/merged_financials_lobbying.csv
+
+5. Create Balanced Panel (Optional)
+
+Restrict the dataset to firms with complete data for all years 2010–2020:
+python code/filter_balanced_panel.py
+Output:
+data/final/merged_financials_lobbying_balanced.csv
+
+Project Structure
+data/
+  raw/          # Original datasets
+  processed/    # Clean intermediate datasets
+  final/        # Final merged panel datasets
+
+code/           # Reproducible scripts
+
+results/
+  figures/      # Visualizations
+
+**Hypotheses:**
+This project tests the following hypotheses:
+  H1: Firms that spend more on lobbying have higher profitability (ROA).
+  H2: Lobbying expenditures predict higher future profitability (lagged effect).
+  H3: More profitable firms spend more on lobbying (reverse causality test).
+  H4: The returns to lobbying exhibit diminishing marginal effects.
+These hypotheses allow us to examine both the direction and the economic mechanism underlying the lobbying–profitability relationship.
 
 
 - **code/** — Python scripts and notebooks. Use `config_paths.py` for paths.

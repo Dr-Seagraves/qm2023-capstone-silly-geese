@@ -1,0 +1,112 @@
+# AI Audit Log
+
+This file documents how AI tools were used during the project, what was generated, and how outputs were verified by humans.
+
+## Purpose
+
+- Improve transparency and reproducibility of AI-assisted work.
+- Record where AI influenced code, documentation, analysis, or interpretation.
+- Track human review steps before accepting AI-generated content.
+
+## AI Tools Used
+
+| Tool | Version / Model | Primary Use in This Project |
+|---|---|---|
+| GitHub Copilot (VS Code) | GPT-5.3-Codex | Drafting documentation, code assistance, and workflow support |
+
+## Usage Principles
+
+- AI suggestions are treated as drafts, not final authority.
+- All AI-generated outputs are reviewed and edited by a team member.
+- Numerical claims and dataset logic are checked against source files/scripts.
+- Sensitive or restricted data should not be pasted into external AI systems.
+
+## Audit Entries
+
+Use one entry per substantial AI-assisted action.
+
+### Entry Template
+
+- **Date:** YYYY-MM-DD
+- **Team Member:** Name
+- **Task:** What was being done
+- **AI Prompt (summary):** Short description of request
+- **AI Output (summary):** What AI produced
+- **Files Affected:** List paths
+- **Validation Performed:** Tests/checks/human review completed
+- **Edits After AI:** What was changed manually
+- **Status:** Accepted / Accepted with changes / Rejected
+- **Notes:** Limitations, concerns, or follow-up
+
+---
+
+### Entry 1
+
+- **Date:** 2026-02-26
+- **Team Member:** Project team (via VS Code Copilot session)
+- **Task:** Create a final dataset data dictionary
+- **AI Prompt (summary):** "help me add a data_dictionary.md to data/final/"
+- **AI Output (summary):** Generated a new markdown dictionary describing final datasets, column definitions, and missingness notes
+- **Files Affected:**
+  - `data/final/data_dictionary.md`
+- **Validation Performed:**
+  - Confirmed columns from final CSV headers (`merged_financials_lobbying.csv` and `merged_financials_lobbying_balanced.csv`)
+  - Confirmed balanced-panel logic from `code/filter_balanced_panel.py`
+  - Confirmed ROA construction from `code/create_crosswalk_and_merge.py`
+- **Edits After AI:** None logged yet
+- **Status:** Accepted with changes pending team review
+- **Notes:** Keep this audit updated if definitions or pipeline logic change
+
+### Entry 2
+
+- **Date:** 2026-02-26
+- **Team Member:** Project team (via VS Code Copilot session)
+- **Task:** Initialize AI audit tracking document
+- **AI Prompt (summary):** "help me generate a file titled AI_Audit.md"
+- **AI Output (summary):** Created this audit file with policy, template, and initial entries
+- **Files Affected:**
+  - `AI_Audit.md`
+- **Validation Performed:**
+  - Verified file creation at repository root
+  - Reviewed section structure for project fit
+- **Edits After AI:** None
+- **Status:** Accepted
+- **Notes:** Add entries continuously for future AI-assisted tasks
+
+### Entry 3
+- **Date:** 2026-02-22
+- **Team Member:** Shelby Howard
+- **Task:** Uploading raw SEC Q4s from 2010-2020
+- **AI Prompt (summary):** "Help me download Q4 financials from the SEC for years 2010-2020"
+- **AI Output (summary):** Created a python code and downloaded raw data to the raw file.
+- **Files Affected:** /data/raw reports.csv, /code build_financials.py
+- **Validation Performed:** Crossed-checked with actual SEC website.
+- **Edits After AI:** N/A
+- **Status:** Accepted
+- **Notes:** N/A
+
+### Entry 4
+- **Date:** 2026-02-23
+- **Team Member:** Gracie Vivion
+- **Task:** Created a crosswalk for CIK and GVKEY to merge financials_clean.csv and lobbying_clean.csv.
+- **AI Prompt (summary):** "Help me create a crosswalk between CIK and GVKEY and merge "financials_clean.csv and lobbying_clean.csv."
+- **AI Output (summary):** Created a python code and  crosswalk CSV and merged financials_clean.csv and lobbying_clean.csv.
+- **Files Affected:** /data/processed cik_gvkey_crosswalk.csv, /data/final merged_financials_lobbying_balanced.csv, /code create_crosswalk_and_merge.py
+- **Validation Performed:** Crossed-checked with actual SEC website.
+- **Edits After AI:** Added ROA column to merged_financials_lobbying_balanced.csv
+- **Status:** Accepted
+- **Notes:** Quite a few blank return cells
+
+
+**AI Use Disclosure**
+AI tools were used to assist with debugging, code structuring, and documentation drafting. All outputs were reviewed, tested, and validated manually. The research design, data decisions, and interpretation of results were completed independently by the project team.
+
+All of the following were completed and verified by the project team:
+    - Selection of research question
+    - Data acquisition decisions (SEC Q4 data, lobbying data)
+    - Design of empirical strategy
+    - Construction of crosswalk logic
+    - Validation of merge results
+    - Interpretation of regression output
+    - Final decisions on modeling specifications
+All code was reviewed, edited, and tested manually before inclusion in the final repository.
