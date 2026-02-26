@@ -58,54 +58,82 @@ Interpret results as associations unless stronger exogenous variation is introdu
 
 ## How to Reproduce the Data Pipeline:
 
-  This project constructs a firm-year panel dataset linking firm lobbying expenditures to financial performance using SEC financial statement data.
+This project constructs a firm-year panel dataset linking firm lobbying expenditures to financial performance using SEC financial statement data.
 
-  All scripts should be run from the project root directory.
+All scripts should be run from the project root directory.
+
+Quick run order:
+```bash
+python code/build_financials.py
+python code/fetch_lobbying_data.py
+python code/create_crosswalk_and_merge.py
+python code/filter_balanced_panel.py
+python code/generate_quality_report.py
+```
 
 1. Install Required Packages
 
 Install the necessary Python packages:
+```bash
 pip install pandas numpy statsmodels matplotlib requests
+```
 
 2. Build Financial Dataset (SEC Data)
 
 Construct the cleaned firm-year financial dataset from SEC Q4 filings (2010–2020):
+```bash
 python code/build_financials.py
-  This script:
-  - Processes SEC financial statement data
-  - Extracts Assets, NetIncomeLoss, and Revenues
-  - Aggregates to the firm-year level
+```
+This script:
+- Processes SEC financial statement data
+- Extracts Assets, NetIncomeLoss, and Revenues
+- Aggregates to the firm-year level
 Output:
-data/processed/financials_clean.csv
+`data/processed/financials_clean.csv`
 
 3. Build Lobbying Dataset
 
 Construct firm-year lobbying expenditure totals:
+```bash
 python code/fetch_lobbying_data.py
+```
 This script:
-  - Aggregates lobbying reports to the firm-year level
+- Aggregates lobbying reports to the firm-year level
 Output:
-data/processed/lobbying_clean.csv
+`data/processed/lobbying_clean.csv`
 
 4. Create CIK–GVKEY Crosswalk and Merge Datasets
 
 Merge financial and lobbying data:
+```bash
 python code/create_crosswalk_and_merge.py
+```
 This script:
-  - Builds a CIK–GVKEY crosswalk using company name matching
-  - Merges financials and lobbying data
-  - Constructs Return on Assets (ROA):
-        𝑅𝑂𝐴 = 𝑁𝑒𝑡𝐼𝑛𝑐𝑜𝑚𝑒𝐿𝑜𝑠𝑠 / 𝐴𝑠𝑠𝑒𝑡𝑠
+- Builds a CIK–GVKEY crosswalk using company name matching
+- Merges financials and lobbying data
+- Constructs Return on Assets (ROA):
+  $ROA = NetIncomeLoss / Assets$
 Outputs:
-data/processed/cik_gvkey_crosswalk.csv
-data/final/merged_financials_lobbying.csv
+`data/processed/cik_gvkey_crosswalk.csv`  
+`data/final/merged_financials_lobbying.csv`
 
 5. Create Balanced Panel (Optional)
 
 Restrict the dataset to firms with complete data for all years 2010–2020:
+```bash
 python code/filter_balanced_panel.py
+```
 Output:
-data/final/merged_financials_lobbying_balanced.csv
+`data/final/merged_financials_lobbying_balanced.csv`
+
+6. Generate Data Quality Report
+
+Create a polished data quality summary from current pipeline outputs:
+```bash
+python code/generate_quality_report.py
+```
+Output:
+`results/reports/quality_report.md`
 
 Project Structure
 data/

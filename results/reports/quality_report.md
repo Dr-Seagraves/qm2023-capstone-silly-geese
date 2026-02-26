@@ -41,7 +41,7 @@ Interpretation: lobbying coverage is sparse relative to the full financial panel
 ROA is defined as:
 
 \[
-\text{ROA} = \frac{\text{NetIncomeLoss}}{\text{Assets}}
+	ext{ROA} = rac{	ext{NetIncomeLoss}}{	ext{Assets}}
 \]
 
 Summary in `merged_financials_lobbying.csv`:
