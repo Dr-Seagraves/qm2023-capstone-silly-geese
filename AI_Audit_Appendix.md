@@ -1,4 +1,4 @@
-# AI Audit Log
+# AI Audit Appendix
 
 This file documents how AI tools were used during the project, what was generated, and how outputs were verified by humans.
 
