@@ -37,8 +37,13 @@ Rationale: The attenuation observed after adding controls suggests both selectio
 
 
 Data Quality Flags
+
 Outliers: A small number of firms with very high lobbying expenditures my disproportionately infleunce results, suggesting the need for trimming or robustness checks.
+
 Lasg Structure: The relationship between lobbying and firm performance is not contemporaneous and appears strongest at intermediate lags (1-2 years), which must be accounted for in the model.
+
 Heterogeneity: Differences across firm size and policy exposure indicate that the relationshipvaries across groups, sugggesting potential model specification challenges.
+
 Control Sensitivity: The estimated effect of lobbying decreases after including control variables, indicating possible selection bias or ommitted variable concerns.
+
 Potential Data Limitations: Given the size and complexity of the dataset, some observations may require transformation or further cleaning to ensure reliable regression results.
