@@ -135,6 +135,38 @@ python code/generate_quality_report.py
 Output:
 `results/reports/quality_report.md`
 
+## EDA Reproducibility (capstone_eda.ipynb)
+
+The EDA notebook reads:
+- `data/final/merged_financials_lobbying.csv`
+
+and writes figures to:
+- `results/figures/`
+
+### Option A: Full reproducible run (from scripts + notebook)
+
+Run from project root:
+
+```bash
+pip install -r requirements.txt
+python code/build_financials.py
+python code/fetch_lobbying_data.py
+python code/create_crosswalk_and_merge.py
+python code/filter_balanced_panel.py
+python code/generate_quality_report.py
+python -m jupyter nbconvert --to notebook --execute capstone_eda.ipynb --output /tmp/capstone_eda_executed.ipynb
+```
+
+### Option B: Notebook-only run (if final data already exists)
+
+```bash
+pip install -r requirements.txt
+python -m jupyter nbconvert --to notebook --execute capstone_eda.ipynb --output /tmp/capstone_eda_executed.ipynb
+```
+
+If execution succeeds, the fully executed notebook is saved at:
+- `/tmp/capstone_eda_executed.ipynb`
+
 Project Structure
 data/
   raw/          # Original datasets

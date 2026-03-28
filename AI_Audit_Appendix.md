@@ -169,6 +169,27 @@ Use one entry per substantial AI-assisted action.
 - **Status:** Accepted with changes
 - **Notes:** Re-run notebook and regenerate figures if source data or variable construction changes
 
+### Entry 8
+
+- **Date:** 2026-03-28
+- **Team Member:** Shelby Howard (via VS Code Copilot session)
+- **Task:** Verify capstone EDA notebook reproducibility and document run steps
+- **AI Prompt (summary):** "is the capstone eda reproducable" and follow-up request to add reproducibility instructions
+- **AI Output (summary):**
+  - Ran non-interactive end-to-end execution of `capstone_eda.ipynb` using nbconvert and confirmed successful completion
+  - Added a new README section with copy-paste commands for full pipeline + notebook run and notebook-only run
+- **Files Affected:**
+  - `README.md`
+  - `AI_Audit_Appendix.md`
+- **Validation Performed:**
+  - Executed: `python -m jupyter nbconvert --to notebook --execute capstone_eda.ipynb --output /tmp/capstone_eda_executed.ipynb`
+  - Verified command exit code was 0 and output notebook was written to `/tmp/capstone_eda_executed.ipynb`
+  - Confirmed README section aligns with the repository pipeline sequence and current notebook input path
+- **Edits After AI:**
+  - Kept documentation language concise and added two reproducibility options (full run vs notebook-only)
+- **Status:** Accepted with changes
+- **Notes:** Reproducibility requires dependencies in `requirements.txt` and either existing final data or running the full data pipeline first
+
 
 
 **AI Use Disclosure**
