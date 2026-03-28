@@ -124,6 +124,52 @@ Use one entry per substantial AI-assisted action.
 - **Status:** Accepted with changes
 - **Notes:** Report values are data-dependent and should be regenerated after any pipeline/data update
 
+### Entry 6
+
+- **Date:** 2026-03-28
+- **Team Member:** Shelby Howard
+- **Task:** Expand and continue AI audit appendix documentation
+- **AI Prompt (summary):** "create new entries in the ai audit appendix"
+- **AI Output (summary):** Added new structured audit entries to continue project AI-use tracking
+- **Files Affected:**
+  - `AI_Audit_Appendix.md`
+- **Validation Performed:**
+  - Confirmed new entries follow the existing appendix template fields
+  - Checked placement under the Audit Entries section
+- **Edits After AI:** None
+- **Status:** Accepted
+- **Notes:** Use Entries 7 and 8 below as structured placeholders for upcoming AI-assisted tasks
+
+### Entry 7
+
+- **Date:** 2026-03-28
+- **Team Member:** Shelby Howard (via VS Code Copilot session)
+- **Task:** Build and document EDA notebook visuals for lobbying and firm-performance analysis
+- **AI Prompt (summary):** "help generate and structure the capstone EDA notebook with required plots and interpretations"
+- **AI Output (summary):** Produced notebook code and interpretation text for 10 EDA plots (correlation heatmap, time trends, lag checks, rolling correlation, controls diagnostics, decomposition, nonlinear checks, within-firm changes, and yearly controlled effects), and saved figure outputs to the results folder
+- **Files Affected:**
+  - `capstone_eda.ipynb`
+  - `results/figures/plot1_correlation_heatmap.png`
+  - `results/figures/plot2_outcome_time_series.png`
+  - `results/figures/plot3_dual_axis_outcome_driver.png`
+  - `results/figures/plot4_lagged_effect_analysis.png`
+  - `results/figures/plot5_rolling_correlation.png`
+  - `results/figures/plot6_control_scatter_regression.png`
+  - `results/figures/plot7_time_series_decomposition.png`
+  - `results/figures/plot8_outcome_by_driver_quintile.png`
+  - `results/figures/plot9_within_firm_changes.png`
+  - `results/figures/plot10_yearly_controlled_lobbying_effect.png`
+- **Validation Performed:**
+  - Confirmed notebook reads from `data/final/merged_financials_lobbying.csv` and applies documented filters
+  - Verified each plot cell includes save logic to `results/figures/` with explicit filenames
+  - Checked interpretation text aligns with displayed diagnostics/correlation outputs in the notebook
+  - Reviewed model-oriented notes for consistency with planned M3 robustness checks
+- **Edits After AI:**
+  - Minor manual revisions to interpretation wording for clarity and consistency in M3 references
+- **Status:** Accepted with changes
+- **Notes:** Re-run notebook and regenerate figures if source data or variable construction changes
+
+
 
 **AI Use Disclosure**
 AI tools were used to assist with debugging, code structuring, and documentation drafting. All outputs were reviewed, tested, and validated manually. The research design, data decisions, and interpretation of results were completed independently by the project team.

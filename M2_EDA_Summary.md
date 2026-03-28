@@ -40,7 +40,7 @@ Data Quality Flags
 
 Outliers: A small number of firms with very high lobbying expenditures my disproportionately infleunce results, suggesting the need for trimming or robustness checks.
 
-Lasg Structure: The relationship between lobbying and firm performance is not contemporaneous and appears strongest at intermediate lags (1-2 years), which must be accounted for in the model.
+Lag Structure: The relationship between lobbying and firm performance is not contemporaneous and appears strongest at intermediate lags (1-2 years), which must be accounted for in the model.
 
 Heterogeneity: Differences across firm size and policy exposure indicate that the relationshipvaries across groups, sugggesting potential model specification challenges.
 
