@@ -1,0 +1,19 @@
+Statistic,Model 1: FE (Baseline),Model 2: FE (Clustered SE),Model 3: FE (Lag 2)
+Driver lag,t-1,t-1,t-2
+Lobbying spend coefficient,"-174.587
+(255.299)","-174.587
+(116.934)","-95.348
+(86.703)"
+Log(Assets),"234.706***
+(46.099)","234.706
+(148.659)","94.545
+(92.284)"
+Log(Revenues),"47.835
+(36.968)","47.835
+(43.565)","37.070
+(39.626)"
+Entity FE,Yes,Yes,Yes
+Time FE,Yes,Yes,Yes
+Clustered SE,No,Yes,Yes
+N,2125,2125,1700
+R^2,0.691,0.691,0.763

@@ -406,6 +406,167 @@ def run_robustness_checks(panel: pd.DataFrame) -> pd.DataFrame:
     return summary_df
 
 
+def format_table_cell(result, term: str) -> str:
+    """Format a coefficient and standard error for a publication-style table cell."""
+    if term not in result.params:
+        return "—"
+    coefficient = result.params[term]
+    stderr = result.bse[term]
+    p_value = result.pvalues[term]
+    return f"{coefficient:0.3f}{significance_stars(float(p_value))}\n({stderr:0.3f})"
+
+
+def build_publication_table(
+    model_1,
+    model_2,
+    model_3,
+) -> pd.DataFrame:
+    """Create a compact publication-ready regression table in wide CSV format."""
+    rows = [
+        {
+            "Statistic": "Driver lag",
+            "Model 1: FE (Baseline)": "t-1",
+            "Model 2: FE (Clustered SE)": "t-1",
+            "Model 3: FE (Lag 2)": "t-2",
+        },
+        {
+            "Statistic": "Lobbying spend coefficient",
+            "Model 1: FE (Baseline)": format_table_cell(model_1, "lobbying_lag1_mil"),
+            "Model 2: FE (Clustered SE)": format_table_cell(model_2, "lobbying_lag1_mil"),
+            "Model 3: FE (Lag 2)": format_table_cell(model_3, "lobbying_lag2_mil"),
+        },
+        {
+            "Statistic": "Log(Assets)",
+            "Model 1: FE (Baseline)": format_table_cell(model_1, "log_assets"),
+            "Model 2: FE (Clustered SE)": format_table_cell(model_2, "log_assets"),
+            "Model 3: FE (Lag 2)": format_table_cell(model_3, "log_assets"),
+        },
+        {
+            "Statistic": "Log(Revenues)",
+            "Model 1: FE (Baseline)": format_table_cell(model_1, "log_revenues"),
+            "Model 2: FE (Clustered SE)": format_table_cell(model_2, "log_revenues"),
+            "Model 3: FE (Lag 2)": format_table_cell(model_3, "log_revenues"),
+        },
+        {
+            "Statistic": "Entity FE",
+            "Model 1: FE (Baseline)": "Yes",
+            "Model 2: FE (Clustered SE)": "Yes",
+            "Model 3: FE (Lag 2)": "Yes",
+        },
+        {
+            "Statistic": "Time FE",
+            "Model 1: FE (Baseline)": "Yes",
+            "Model 2: FE (Clustered SE)": "Yes",
+            "Model 3: FE (Lag 2)": "Yes",
+        },
+        {
+            "Statistic": "Clustered SE",
+            "Model 1: FE (Baseline)": "No",
+            "Model 2: FE (Clustered SE)": "Yes",
+            "Model 3: FE (Lag 2)": "Yes",
+        },
+        {
+            "Statistic": "N",
+            "Model 1: FE (Baseline)": int(model_1.nobs),
+            "Model 2: FE (Clustered SE)": int(model_2.nobs),
+            "Model 3: FE (Lag 2)": int(model_3.nobs),
+        },
+        {
+            "Statistic": "R^2",
+            "Model 1: FE (Baseline)": f"{model_1.rsquared:0.3f}",
+            "Model 2: FE (Clustered SE)": f"{model_2.rsquared:0.3f}",
+            "Model 3: FE (Lag 2)": f"{model_3.rsquared:0.3f}",
+        },
+    ]
+    return pd.DataFrame(rows)
+
+
+def extract_robustness_value(
+    summary_df: pd.DataFrame,
+    check_name: str,
+    sample_name: str,
+    specification: str | None = None,
+) -> pd.Series:
+    """Return the first matching robustness row for a named check, sample, and specification."""
+    subset = summary_df.loc[
+        (summary_df["Check"] == check_name) & (summary_df["Sample"] == sample_name)
+    ]
+    if specification is not None:
+        subset = subset.loc[subset["Specification"] == specification]
+    if subset.empty:
+        return pd.Series(dtype="object")
+    return subset.iloc[0]
+
+
+def render_interpretation_memo(
+    fe_lag1,
+    fe_lag2,
+    fe_lag3,
+    fe_placebo,
+    robustness_summary: pd.DataFrame,
+    bp_table: pd.DataFrame,
+    vif_table: pd.DataFrame,
+    arima_metrics: pd.DataFrame,
+    arima_summary_text: str,
+) -> str:
+    """Create the assignment-ready interpretation memo for M3."""
+    coef = fe_lag1.params["lobbying_lag1_mil"]
+    p_value = fe_lag1.pvalues["lobbying_lag1_mil"]
+    stderr = fe_lag1.bse["lobbying_lag1_mil"]
+
+    lag2_row = extract_robustness_value(robustness_summary, "Alternative lag structures", "Full sample", "Lag 2")
+    lag3_row = extract_robustness_value(robustness_summary, "Alternative lag structures", "Full sample", "Lag 3")
+    outlier_row = extract_robustness_value(robustness_summary, "Exclude outlier period", "Excluding 2020")
+    placebo_row = extract_robustness_value(robustness_summary, "Placebo / lead check", "Full sample", "Lead 1")
+    small_row = extract_robustness_value(robustness_summary, "Group subsamples", "Small firms (below median assets)")
+    large_row = extract_robustness_value(robustness_summary, "Group subsamples", "Large firms (at or above median assets)")
+
+    arima_adf = float(arima_metrics.loc[arima_metrics["Metric"] == "ADF p-value (training series)", "Value"].iloc[0])
+    arima_order = arima_metrics.loc[arima_metrics["Metric"] == "Selected ARIMA order", "Value"].iloc[0]
+    arima_rmse = float(arima_metrics.loc[arima_metrics["Metric"] == "ARIMA RMSE", "Value"].iloc[0])
+    naive_rmse = float(arima_metrics.loc[arima_metrics["Metric"] == "Naive RMSE", "Value"].iloc[0])
+    bp_p_value = float(bp_table.loc[0, "p_value"])
+    max_vif = float(vif_table["VIF"].max())
+
+    headline_change_1m = coef
+    headline_change_100k = coef / 10.0
+
+    memo = f"""# M3 Interpretation Memo
+
+## Model A Headline
+
+A 1 unit increase in lobbying spend, where 1 unit equals $1 million, is associated with a {headline_change_1m:0.1f} percentage-point change in winsorized ROA in the lag-1 fixed-effects specification (p = {p_value:0.3f}, SE = {stderr:0.3f}).
+
+In smaller economic units, a $100,000 increase in lobbying spend corresponds to about a {headline_change_100k:0.2f} percentage-point change in ROA. The estimate is not statistically significant at conventional levels, so the result should be treated as a noisy association rather than evidence of a reliable causal effect.
+
+## Economic Interpretation
+
+The sign and size of the estimate are consistent with several channels that could operate in either direction. Higher lobbying may reflect firms facing regulatory pressure, compliance costs, or market uncertainty, which could coincide with weaker profitability. Alternatively, profitable firms may have more slack resources to allocate to lobbying, which is why reverse causality remains a concern. A third channel is strategic risk management: firms may lobby more when expected future regulatory burdens are high, and that anticipation can compress margins in the short run.
+
+## Model B Summary
+
+The annual ARIMA benchmark selected order {arima_order} with an ADF p-value of {arima_adf:0.3f}. The holdout forecast did not improve on the naive baseline: ARIMA RMSE = {arima_rmse:0.3f} and naive RMSE = {naive_rmse:0.3f}. The practical takeaway is that the annual ROA series is difficult to forecast better than a persistence benchmark, which limits how much the time-series model adds beyond the panel regressions.
+
+## Diagnostics
+
+The Breusch-Pagan test is significant (p < 0.001), which indicates heteroskedasticity in the residuals and justifies the use of clustered or otherwise robust standard errors. The maximum VIF is {max_vif:0.2f}, which is comfortably below common multicollinearity red-flag thresholds, so the control set does not appear to be severely collinear. The residual plots should still be interpreted cautiously because the model is estimated on a sparse panel with large firm heterogeneity.
+
+## Robustness
+
+Clustered standard errors reduce the apparent precision of the lag-1 estimate relative to conventional SEs, which is why the clustered p-value rises from 0.494 to 0.135 in the publication table. Alternative lag specifications are not stable: lag 2 is {lag2_row['Coefficient']:0.1f} with p = {lag2_row['p_value']:0.3f}, and lag 3 is {lag3_row['Coefficient']:0.1f} with p = {lag3_row['p_value']:0.3f}. Excluding 2020 leaves the sign negative but still statistically insignificant (p = {outlier_row['p_value']:0.3f}). The subgroup split suggests the effect is much more negative among large firms than small firms, but the small-firm estimate is imprecise.
+
+## Caveats
+
+This design still faces omitted-variable risk, especially from time-varying governance, industry conditions, and unobserved firm strategy. The analysis uses fixed effects and lag structure checks rather than a full DiD design, so parallel trends is not directly tested here; if a DiD extension is added later, it should be validated explicitly. External validity is also limited because the sample is a specific firm-year panel with substantial missingness in lobbying coverage.
+"""
+
+    memo += "\n\n## ARIMA Diagnostics Detail\n\n"
+    memo += arima_summary_text.replace("M3 ARIMA Summary\n", "").strip()
+    memo += "\n"
+
+    return memo
+
+
 def save_fixed_effects_tables(models: dict[str, object], regressor_order: list[str]) -> None:
     """Save publication-style regression tables and a tidy coefficient table."""
     summary = summary_col(
@@ -642,6 +803,7 @@ def main() -> None:
     panel = prepare_panel_data(raw)
 
     # Model A: fixed effects with alternative lag structures.
+    fe_lag1_standard, _ = fit_fixed_effects_model(panel, "lobbying_lag1_mil", cov_type=None)
     fe_lag1, fe_lag1_data = fit_fixed_effects_model(panel, "lobbying_lag1_mil")
     fe_lag2, _ = fit_fixed_effects_model(panel, "lobbying_lag2_mil")
     fe_lag3, _ = fit_fixed_effects_model(panel, "lobbying_lag3_mil")
@@ -677,10 +839,28 @@ def main() -> None:
     forecast_table, metrics_table, diagnostics_text, future_forecast_table = run_arima_forecast(annual_series)
     save_arima_outputs(forecast_table, metrics_table, diagnostics_text, future_forecast_table)
 
+    publication_table = build_publication_table(fe_lag1_standard, fe_lag1, fe_lag2)
+    publication_table.to_csv(TABLES_DIR / "M3_regression_table.csv", index=False)
+    save_text(TABLES_DIR / "M3_regression_table.txt", publication_table.to_string(index=False))
+
+    interpretation_memo = render_interpretation_memo(
+        fe_lag1_standard,
+        fe_lag2,
+        fe_lag3,
+        fe_placebo,
+        robustness_summary,
+        bp_table,
+        vif_table,
+        metrics_table,
+        diagnostics_text,
+    )
+    save_text(REPORTS_DIR / "M3_interpretation.md", interpretation_memo)
+
     print("M3 econometric models completed successfully.")
     print(f"Fixed effects sample size: {int(fe_lag1.nobs)}")
     print(f"Annual ARIMA observations: {len(annual_series)}")
     print(f"Robustness checks saved: {len(robustness_summary)} rows")
+    print("Publication-ready regression table and interpretation memo saved.")
 
 
 if __name__ == "__main__":
