@@ -4,15 +4,25 @@ This file documents how AI tools were used during the project, what was generate
 
 ## Purpose
 
-- Improve transparency and reproducibility of AI-assisted work.
-- Record where AI influenced code, documentation, analysis, or interpretation.
-- Track human review steps before accepting AI-generated content.
+- ## Purpose
+
+## Purpose
+
+This appendix documents how AI tools were used throughout the project to support coding, data processing, and econometric analysis. The goal is to ensure transparency in how AI contributed to the workflow while maintaining academic integrity.
+
+AI was primarily used to assist with:
+- Structuring Python scripts and improving code efficiency  
+- Implementing econometric models and diagnostic tests  
+- Debugging errors and refining workflow in GitHub Codespaces  
+- Generating draft documentation and improving clarity of explanations  
+
+All AI-generated outputs were reviewed, tested, and adjusted by team members before being accepted. The final results, model decisions, and interpretations reflect the team’s own understanding and validation.
+
+AI tools were integrated into the GitHub workflow to support iterative development, allowing the team to test, refine, and validate outputs directly within the coding environment.
 
 ## AI Tools Used
 
-| Tool | Version / Model | Primary Use in This Project |
-|---|---|---|
-| GitHub Copilot (VS Code) | GPT-5.3-Codex | Drafting documentation, code assistance, and workflow support |
+- GitHub Copilot: Integrated into VS Code for real-time code suggestions, debugging assistance, and generating boilerplate code for Python scripts related to data processing and analysis. 
 
 ## Usage Principles
 
@@ -126,70 +136,80 @@ Use one entry per substantial AI-assisted action.
 
 ### Entry 6
 
-- **Date:** 2026-03-28
-- **Team Member:** Shelby Howard
-- **Task:** Expand and continue AI audit appendix documentation
-- **AI Prompt (summary):** "create new entries in the ai audit appendix"
-- **AI Output (summary):** Added new structured audit entries to continue project AI-use tracking
+- **Date:** 2026-03-01
+- **Team Member:** Project team (via VS Code Copilot session)
+- **Task:** Create script to filter merged dataset to balanced panel
+- **AI Prompt (summary):** "Help me write a Python script to filter the merged financials and lobbying data to only include firms with observations for all years from 2010-2020"
+- **AI Output (summary):** Generated `code/filter_balanced_panel.py` to read the merged CSV, group by firm identifier, check for complete years, and output a balanced panel CSV
 - **Files Affected:**
-  - `AI_Audit_Appendix.md`
+  - `code/filter_balanced_panel.py`
+  - `data/final/merged_financials_lobbying_balanced.csv`
 - **Validation Performed:**
-  - Confirmed new entries follow the existing appendix template fields
-  - Checked placement under the Audit Entries section
-- **Edits After AI:** None
-- **Status:** Accepted
-- **Notes:** Use Entries 7 and 8 below as structured placeholders for upcoming AI-assisted tasks
+  - Ran the script and verified the output has firms with 11 years of data
+  - Cross-checked counts with original merged dataset
+- **Edits After AI:** Minor adjustments to column selection and file paths
+- **Status:** Accepted with changes
+- **Notes:** Ensures balanced panel for fixed-effects models
 
 ### Entry 7
 
-- **Date:** 2026-03-28
-- **Team Member:** Shelby Howard (via VS Code Copilot session)
-- **Task:** Build and document EDA notebook visuals for lobbying and firm-performance analysis
-- **AI Prompt (summary):** "help generate and structure the capstone EDA notebook with required plots and interpretations"
-- **AI Output (summary):** Produced notebook code and interpretation text for 10 EDA plots (correlation heatmap, time trends, lag checks, rolling correlation, controls diagnostics, decomposition, nonlinear checks, within-firm changes, and yearly controlled effects), and saved figure outputs to the results folder
+- **Date:** 2026-03-10
+- **Team Member:** Gracie Vivion (via VS Code Copilot session)
+- **Task:** Download LobbyView data for lobbying reports
+- **AI Prompt (summary):** "Assist in creating a script to download LobbyView data including clients.csv and reports.csv"
+- **AI Output (summary):** Created `code/download_lobbyview_data.py` with functions to download and save the raw LobbyView datasets
 - **Files Affected:**
-  - `capstone_eda.ipynb`
-  - `results/figures/plot1_correlation_heatmap.png`
-  - `results/figures/plot2_outcome_time_series.png`
-  - `results/figures/plot3_dual_axis_outcome_driver.png`
-  - `results/figures/plot4_lagged_effect_analysis.png`
-  - `results/figures/plot5_rolling_correlation.png`
-  - `results/figures/plot6_control_scatter_regression.png`
-  - `results/figures/plot7_time_series_decomposition.png`
-  - `results/figures/plot8_outcome_by_driver_quintile.png`
-  - `results/figures/plot9_within_firm_changes.png`
-  - `results/figures/plot10_yearly_controlled_lobbying_effect.png`
-- **Validation Performed:**
-  - Confirmed notebook reads from `data/final/merged_financials_lobbying.csv` and applies documented filters
-  - Verified each plot cell includes save logic to `results/figures/` with explicit filenames
-  - Checked interpretation text aligns with displayed diagnostics/correlation outputs in the notebook
-  - Reviewed model-oriented notes for consistency with planned M3 robustness checks
-- **Edits After AI:**
-  - Minor manual revisions to interpretation wording for clarity and consistency in M3 references
+  - `code/download_lobbyview_data.py`
+  - `data/raw/clients.csv`
+  - `data/raw/reports.csv`
+- **Validation Performed:** Confirmed downloads match expected file sizes and headers from LobbyView documentation
+- **Edits After AI:** Updated URLs and added error handling
 - **Status:** Accepted with changes
-- **Notes:** Re-run notebook and regenerate figures if source data or variable construction changes
+- **Notes:** Follows the guide in `LOBBYVIEW_DOWNLOAD_GUIDE.md`
 
 ### Entry 8
 
-- **Date:** 2026-03-28
-- **Team Member:** Shelby Howard (via VS Code Copilot session)
-- **Task:** Verify capstone EDA notebook reproducibility and document run steps
-- **AI Prompt (summary):** "is the capstone eda reproducable" and follow-up request to add reproducibility instructions
-- **AI Output (summary):**
-  - Ran non-interactive end-to-end execution of `capstone_eda.ipynb` using nbconvert and confirmed successful completion
-  - Added a new README section with copy-paste commands for full pipeline + notebook run and notebook-only run
+- **Date:** 2026-03-15
+- **Team Member:** Project team (via VS Code Copilot session)
+- **Task:** Explore and clean LobbyView data
+- **AI Prompt (summary):** "Help me write a script to explore the LobbyView reports and clients data, clean it, and prepare for merging"
+- **AI Output (summary):** Generated `code/explore_lobbyview_data.py` with exploratory data analysis, data cleaning steps, and aggregation to firm-year lobbying spend
 - **Files Affected:**
-  - `README.md`
-  - `AI_Audit_Appendix.md`
-- **Validation Performed:**
-  - Executed: `python -m jupyter nbconvert --to notebook --execute capstone_eda.ipynb --output /tmp/capstone_eda_executed.ipynb`
-  - Verified command exit code was 0 and output notebook was written to `/tmp/capstone_eda_executed.ipynb`
-  - Confirmed README section aligns with the repository pipeline sequence and current notebook input path
-- **Edits After AI:**
-  - Kept documentation language concise and added two reproducibility options (full run vs notebook-only)
+  - `code/explore_lobbyview_data.py`
+  - `data/processed/lobbying_clean.csv` (intermediate output)
+- **Validation Performed:** Reviewed summary statistics and checked for data integrity
+- **Edits After AI:** Adjusted filtering criteria for amendments and no-activity filings
 - **Status:** Accepted with changes
-- **Notes:** Reproducibility requires dependencies in `requirements.txt` and either existing final data or running the full data pipeline first
+- **Notes:** Builds on `fetch_lobbying_data.py` for final cleaning
 
+### Entry 9
+
+- **Date:** 2026-03-20
+- **Team Member:** Alycia Reji (via VS Code Copilot session)
+- **Task:** Create visualization script for lobbying vs revenue
+- **AI Prompt (summary):** "Generate a Python script to visualize the relationship between lobbying expenditures and firm revenue using the merged dataset"
+- **AI Output (summary):** Created `code/visualize_lobbying_vs_revenue.py` with matplotlib plots for scatter plots, trends over time, and correlations
+- **Files Affected:**
+  - `code/visualize_lobbying_vs_revenue.py`
+  - `results/figures/` (generated plots)
+- **Validation Performed:** Ran the script and verified plots are saved correctly; checked data subsets for accuracy
+- **Edits After AI:** Customized plot styles and added labels
+- **Status:** Accepted with changes
+- **Notes:** Used for exploratory data analysis and presentation
+
+### Entry 10
+
+- **Date:** 2026-04-01
+- **Team Member:** Daniz Mammadova (via VS Code Copilot session)
+- **Task:** Perform exploratory data analysis in Jupyter notebook
+- **AI Prompt (summary):** "Help me set up a Jupyter notebook for EDA on the lobbying and financial data, including statistical summaries and visualizations"
+- **AI Output (summary):** Assisted in structuring `capstone_eda.ipynb` with cells for data loading, descriptive stats, correlations, and initial regression models
+- **Files Affected:**
+  - `capstone_eda.ipynb`
+- **Validation Performed:** Executed notebook cells and reviewed outputs for correctness
+- **Edits After AI:** Added custom analysis cells and refined interpretations
+- **Status:** Accepted with changes
+- **Notes:** Complements the Python scripts with interactive analysis
 
 
 **AI Use Disclosure**
