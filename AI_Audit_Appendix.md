@@ -4,10 +4,6 @@ This file documents how AI tools were used during the project, what was generate
 
 ## Purpose
 
-- ## Purpose
-
-## Purpose
-
 This appendix documents how AI tools were used throughout the project to support coding, data processing, and econometric analysis. The goal is to ensure transparency in how AI contributed to the workflow while maintaining academic integrity.
 
 AI was primarily used to assist with:
