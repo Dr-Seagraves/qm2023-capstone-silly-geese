@@ -30,7 +30,7 @@ from statsmodels.stats.outliers_influence import variance_inflation_factor
 from statsmodels.tsa.arima.model import ARIMA
 from statsmodels.tsa.stattools import adfuller
 
-from config_paths import FINAL_DATA_DIR, FIGURES_DIR, TABLES_DIR
+from config_paths import FINAL_DATA_DIR, FIGURES_DIR, REPORTS_DIR, TABLES_DIR
 
 
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -108,6 +108,7 @@ def prepare_panel_data(raw: pd.DataFrame) -> pd.DataFrame:
     group = data.groupby("cik", sort=False)
     data["lobbying_lag1_mil"] = group["lobbying_spend_mil"].shift(1)
     data["lobbying_lag2_mil"] = group["lobbying_spend_mil"].shift(2)
+    data["lobbying_lag3_mil"] = group["lobbying_spend_mil"].shift(3)
     data["lobbying_lead1_mil"] = group["lobbying_spend_mil"].shift(-1)
 
     # Auxiliary controls for robustness and the predictive comparison.
@@ -117,8 +118,8 @@ def prepare_panel_data(raw: pd.DataFrame) -> pd.DataFrame:
     return data
 
 
-def fit_fixed_effects_model(data: pd.DataFrame, lag_col: str):
-    """Fit a two-way fixed effects regression with clustered standard errors."""
+def fit_fixed_effects_model(data: pd.DataFrame, lag_col: str, cov_type: str | None = "cluster"):
+    """Fit a two-way fixed effects regression with optional clustered standard errors."""
     model_data = data.dropna(
         subset=["roa_pct_winsor", lag_col, "log_assets", "log_revenues", "cik", "year"]
     ).copy()
@@ -126,9 +127,14 @@ def fit_fixed_effects_model(data: pd.DataFrame, lag_col: str):
     formula = (
         f"roa_pct_winsor ~ {lag_col} + log_assets + log_revenues + C(cik) + C(year)"
     )
-    model = smf.ols(formula=formula, data=model_data).fit(
-        cov_type="cluster", cov_kwds={"groups": model_data["cik"]}
-    )
+    if cov_type == "cluster":
+        model = smf.ols(formula=formula, data=model_data).fit(
+            cov_type="cluster", cov_kwds={"groups": model_data["cik"]}
+        )
+    elif cov_type is None:
+        model = smf.ols(formula=formula, data=model_data).fit()
+    else:
+        model = smf.ols(formula=formula, data=model_data).fit(cov_type=cov_type)
     return model, model_data
 
 
@@ -191,6 +197,7 @@ def variable_label(variable: str) -> str:
     labels = {
         "lobbying_lag1_mil": "Lobbying spend, t-1 ($M)",
         "lobbying_lag2_mil": "Lobbying spend, t-2 ($M)",
+        "lobbying_lag3_mil": "Lobbying spend, t-3 ($M)",
         "lobbying_lead1_mil": "Lobbying spend, t+1 ($M) [placebo]",
         "log_assets": "Log(Assets)",
         "log_revenues": "Log(Revenues)",
@@ -206,6 +213,197 @@ def significance_stars(p_value: float) -> str:
     if p_value < 0.10:
         return "*"
     return ""
+
+
+def coefficient_snapshot(
+    result,
+    check_name: str,
+    specification: str,
+    sample_name: str,
+    term: str,
+    cov_type: str,
+    note: str = "",
+) -> dict[str, object]:
+    """Collect a compact summary of the focal lobbying coefficient for robustness tables."""
+    p_value = result.pvalues.get(term, np.nan)
+    return {
+        "Check": check_name,
+        "Specification": specification,
+        "Sample": sample_name,
+        "Covariance": cov_type,
+        "Term": variable_label(term),
+        "Coefficient": result.params.get(term, np.nan),
+        "StdErr": result.bse.get(term, np.nan),
+        "p_value": p_value,
+        "Stars": significance_stars(float(p_value)) if pd.notna(p_value) else "",
+        "N": int(result.nobs),
+        "Note": note,
+    }
+
+
+def render_robustness_report(summary_df: pd.DataFrame) -> str:
+    """Render a short text report that explains the robustness checks."""
+
+    def table_for(check_name: str) -> str:
+        subset = summary_df.loc[summary_df["Check"] == check_name].copy()
+        if subset.empty:
+            return "No results available."
+        display_cols = ["Specification", "Sample", "Covariance", "Coefficient", "StdErr", "p_value", "N", "Note"]
+        return subset[display_cols].to_string(index=False, float_format=lambda value: f"{value:0.4f}")
+
+    checks = summary_df["Check"].drop_duplicates().tolist()
+    sections = ["M3 Robustness Checks", ""]
+    sections.append(
+        "The focal driver is lagged lobbying spend. These checks show whether the sign, magnitude, and precision of the lobbying coefficient are stable under alternative specifications."
+    )
+
+    for check_name in checks:
+        sections.extend([
+            "",
+            check_name,
+            table_for(check_name),
+        ])
+
+    sections.append("")
+    sections.append(
+        "Interpretation: if the coefficient remains similar across specifications, the main relationship is less likely to be driven by a single standard-error choice, a single lag choice, or the 2020 shock year."
+    )
+    return "\n".join(sections)
+
+
+def run_robustness_checks(panel: pd.DataFrame) -> pd.DataFrame:
+    """Estimate the required robustness checks and save compact comparison tables."""
+    standard_model, _ = fit_fixed_effects_model(panel, "lobbying_lag1_mil", cov_type=None)
+    clustered_model, _ = fit_fixed_effects_model(panel, "lobbying_lag1_mil", cov_type="cluster")
+    lag2_model, _ = fit_fixed_effects_model(panel, "lobbying_lag2_mil")
+    lag3_model, _ = fit_fixed_effects_model(panel, "lobbying_lag3_mil")
+    placebo_model, _ = fit_fixed_effects_model(panel, "lobbying_lead1_mil")
+
+    non_outlier_panel = panel.loc[panel["year"] != 2020].copy()
+    non_outlier_model, _ = fit_fixed_effects_model(non_outlier_panel, "lobbying_lag1_mil")
+
+    asset_panel = panel.dropna(subset=["Assets"]).copy()
+    asset_median = asset_panel["Assets"].median()
+    small_firm_panel = asset_panel.loc[asset_panel["Assets"] < asset_median].copy()
+    large_firm_panel = asset_panel.loc[asset_panel["Assets"] >= asset_median].copy()
+    small_firm_model, _ = fit_fixed_effects_model(small_firm_panel, "lobbying_lag1_mil")
+    large_firm_model, _ = fit_fixed_effects_model(large_firm_panel, "lobbying_lag1_mil")
+
+    summary_rows = [
+        coefficient_snapshot(
+            standard_model,
+            "Standard vs. clustered SEs",
+            "Baseline lag 1",
+            "Full sample",
+            "lobbying_lag1_mil",
+            "Standard",
+            note=f"N={int(standard_model.nobs)}",
+        ),
+        coefficient_snapshot(
+            clustered_model,
+            "Standard vs. clustered SEs",
+            "Baseline lag 1",
+            "Full sample",
+            "lobbying_lag1_mil",
+            "Clustered by cik",
+            note=f"N={int(clustered_model.nobs)}",
+        ),
+        coefficient_snapshot(
+            clustered_model,
+            "Alternative lag structures",
+            "Lag 1",
+            "Full sample",
+            "lobbying_lag1_mil",
+            "Clustered by cik",
+            note="Reference lag",
+        ),
+        coefficient_snapshot(
+            lag2_model,
+            "Alternative lag structures",
+            "Lag 2",
+            "Full sample",
+            "lobbying_lag2_mil",
+            "Clustered by cik",
+            note="One additional year of delay",
+        ),
+        coefficient_snapshot(
+            lag3_model,
+            "Alternative lag structures",
+            "Lag 3",
+            "Full sample",
+            "lobbying_lag3_mil",
+            "Clustered by cik",
+            note="Longer delay specification",
+        ),
+        coefficient_snapshot(
+            placebo_model,
+            "Placebo / lead check",
+            "Lead 1",
+            "Full sample",
+            "lobbying_lead1_mil",
+            "Clustered by cik",
+            note="Should be weak if reverse causality is limited",
+        ),
+        coefficient_snapshot(
+            non_outlier_model,
+            "Exclude outlier period",
+            "Baseline lag 1",
+            "Excluding 2020",
+            "lobbying_lag1_mil",
+            "Clustered by cik",
+            note="Drops the COVID shock year",
+        ),
+        coefficient_snapshot(
+            small_firm_model,
+            "Group subsamples",
+            "Baseline lag 1",
+            "Small firms (below median assets)",
+            "lobbying_lag1_mil",
+            "Clustered by cik",
+            note=f"Median assets = {asset_median:,.0f}",
+        ),
+        coefficient_snapshot(
+            large_firm_model,
+            "Group subsamples",
+            "Baseline lag 1",
+            "Large firms (at or above median assets)",
+            "lobbying_lag1_mil",
+            "Clustered by cik",
+            note=f"Median assets = {asset_median:,.0f}",
+        ),
+    ]
+
+    summary_df = pd.DataFrame(summary_rows)
+    report_text = render_robustness_report(summary_df)
+    summary_df.to_csv(TABLES_DIR / "M3_robustness_checks.csv", index=False)
+    save_text(TABLES_DIR / "M3_robustness_checks.txt", report_text)
+    save_text(REPORTS_DIR / "M3_robustness_checks.txt", report_text)
+
+    standard_vs_clustered = summary_col(
+        [standard_model, clustered_model],
+        stars=True,
+        float_format="%0.4f",
+        model_names=["Standard SEs", "Clustered SEs"],
+        regressor_order=["lobbying_lag1_mil", "log_assets", "log_revenues"],
+        drop_omitted=True,
+        info_dict={"N": lambda x: f"{int(x.nobs)}"},
+    )
+    save_text(TABLES_DIR / "M3_standard_vs_clustered_table.txt", standard_vs_clustered.as_text())
+    save_text(TABLES_DIR / "M3_standard_vs_clustered_table.tex", standard_vs_clustered.as_latex())
+
+    lag_comparison = summary_col(
+        [clustered_model, lag2_model, lag3_model, placebo_model],
+        stars=True,
+        float_format="%0.4f",
+        model_names=["Lag 1", "Lag 2", "Lag 3", "Lead 1"],
+        regressor_order=["lobbying_lag1_mil", "lobbying_lag2_mil", "lobbying_lag3_mil", "lobbying_lead1_mil", "log_assets", "log_revenues"],
+        drop_omitted=True,
+        info_dict={"N": lambda x: f"{int(x.nobs)}"},
+    )
+    save_text(TABLES_DIR / "M3_lag_robustness_table.txt", lag_comparison.as_text())
+    save_text(TABLES_DIR / "M3_lag_robustness_table.tex", lag_comparison.as_latex())
+
+    return summary_df
 
 
 def save_fixed_effects_tables(models: dict[str, object], regressor_order: list[str]) -> None:
@@ -446,16 +644,27 @@ def main() -> None:
     # Model A: fixed effects with alternative lag structures.
     fe_lag1, fe_lag1_data = fit_fixed_effects_model(panel, "lobbying_lag1_mil")
     fe_lag2, _ = fit_fixed_effects_model(panel, "lobbying_lag2_mil")
+    fe_lag3, _ = fit_fixed_effects_model(panel, "lobbying_lag3_mil")
     fe_placebo, _ = fit_fixed_effects_model(panel, "lobbying_lead1_mil")
 
     save_fixed_effects_tables(
         {
             "FE Lag 1": fe_lag1,
             "FE Lag 2": fe_lag2,
+            "FE Lag 3": fe_lag3,
             "FE Placebo": fe_placebo,
         },
-        ["lobbying_lag1_mil", "lobbying_lag2_mil", "lobbying_lead1_mil", "log_assets", "log_revenues"],
+        [
+            "lobbying_lag1_mil",
+            "lobbying_lag2_mil",
+            "lobbying_lag3_mil",
+            "lobbying_lead1_mil",
+            "log_assets",
+            "log_revenues",
+        ],
     )
+
+    robustness_summary = run_robustness_checks(panel)
 
     # Diagnostics for the baseline fixed effects specification.
     bp_table = run_breusch_pagan(fe_lag1, fe_lag1_data, ["lobbying_lag1_mil", "log_assets", "log_revenues"])
@@ -471,6 +680,7 @@ def main() -> None:
     print("M3 econometric models completed successfully.")
     print(f"Fixed effects sample size: {int(fe_lag1.nobs)}")
     print(f"Annual ARIMA observations: {len(annual_series)}")
+    print(f"Robustness checks saved: {len(robustness_summary)} rows")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,29 @@
+M3 Robustness Checks
+
+The focal driver is lagged lobbying spend. These checks show whether the sign, magnitude, and precision of the lobbying coefficient are stable under alternative specifications.
+
+Standard vs. clustered SEs
+ Specification      Sample       Covariance  Coefficient   StdErr  p_value    N   Note
+Baseline lag 1 Full sample         Standard    -174.5874 255.2986   0.4942 2125 N=2125
+Baseline lag 1 Full sample Clustered by cik    -174.5874 116.9337   0.1354 2125 N=2125
+
+Alternative lag structures
+Specification      Sample       Covariance  Coefficient   StdErr  p_value    N                         Note
+        Lag 1 Full sample Clustered by cik    -174.5874 116.9337   0.1354 2125                Reference lag
+        Lag 2 Full sample Clustered by cik     -95.3484  86.7033   0.2715 1700 One additional year of delay
+        Lag 3 Full sample Clustered by cik      38.4661  84.2589   0.6480 1372   Longer delay specification
+
+Placebo / lead check
+Specification      Sample       Covariance  Coefficient   StdErr  p_value    N                                           Note
+       Lead 1 Full sample Clustered by cik    -302.7337 166.4094   0.0689 2129 Should be weak if reverse causality is limited
+
+Exclude outlier period
+ Specification         Sample       Covariance  Coefficient  StdErr  p_value    N                       Note
+Baseline lag 1 Excluding 2020 Clustered by cik    -109.1858 72.2156   0.1305 1911 Drops the COVID shock year
+
+Group subsamples
+ Specification                                  Sample       Covariance  Coefficient    StdErr  p_value    N                       Note
+Baseline lag 1       Small firms (below median assets) Clustered by cik   -5753.8541 4059.0549   0.1563  671 Median assets = 58,034,000
+Baseline lag 1 Large firms (at or above median assets) Clustered by cik     -24.0856    5.2520   0.0000 1454 Median assets = 58,034,000
+
+Interpretation: if the coefficient remains similar across specifications, the main relationship is less likely to be driven by a single standard-error choice, a single lag choice, or the 2020 shock year.

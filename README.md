@@ -135,6 +135,20 @@ python code/generate_quality_report.py
 Output:
 `results/reports/quality_report.md`
 
+7. Generate M3 Econometric Results and Robustness Checks
+
+Run the main econometric script to produce the fixed-effects results, lag-structure comparison, standard-vs-clustered SE comparison, outlier-period exclusion, and subgroup robustness tables:
+```bash
+python code/capstone_models.py
+```
+Key outputs:
+`results/tables/M3_fixed_effects_table.txt`
+`results/tables/M3_standard_vs_clustered_table.txt`
+`results/tables/M3_lag_robustness_table.txt`
+`results/tables/M3_robustness_checks.csv`
+`results/tables/M3_robustness_checks.txt`
+`results/reports/M3_robustness_checks.txt`
+
 ## EDA Reproducibility (capstone_eda.ipynb)
 
 The EDA notebook reads:
