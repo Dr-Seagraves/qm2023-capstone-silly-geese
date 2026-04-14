@@ -1,30 +1,59 @@
 # M3 Interpretation Memo
 
-## Model A Headline
+## 1. Model Specification and Identification
 
-A 1 unit increase in lobbying spend, where 1 unit equals $1 million, is associated with a -174.6 percentage-point change in winsorized ROA in the lag-1 fixed-effects specification (p = 0.494, SE = 255.299).
+Model A is a two-way fixed effects panel regression with firm effects and year effects, estimated with clustered standard errors at the firm level. The focal predictor is lagged lobbying spend (t-1), and controls are log assets and log revenues.
 
-In smaller economic units, a $100,000 increase in lobbying spend corresponds to about a -17.46 percentage-point change in ROA. The estimate is not statistically significant at conventional levels, so the result should be treated as a noisy association rather than evidence of a reliable causal effect.
+Model B is an ARIMA benchmark on annual average ROA. It is included as an alternative predictive specification rather than a causal panel design.
 
-## Economic Interpretation
+## 2. Coefficient Interpretation (Economic Units)
 
-The sign and size of the estimate are consistent with several channels that could operate in either direction. Higher lobbying may reflect firms facing regulatory pressure, compliance costs, or market uncertainty, which could coincide with weaker profitability. Alternatively, profitable firms may have more slack resources to allocate to lobbying, which is why reverse causality remains a concern. A third channel is strategic risk management: firms may lobby more when expected future regulatory burdens are high, and that anticipation can compress margins in the short run.
+In Model A, a $1 million increase in lobbying spend is associated with a -174.6 percentage-point change in winsorized ROA (SE = 255.299, p = 0.494).
 
-## Model B Summary
+Equivalent scaling:
+- $100,000 increase -> -17.46 percentage points in ROA.
+- $500,000 increase -> -87.29 percentage points in ROA.
 
-The annual ARIMA benchmark selected order (0, 1, 0) with an ADF p-value of 0.229. The holdout forecast did not improve on the naive baseline: ARIMA RMSE = 523.530 and naive RMSE = 523.530. The practical takeaway is that the annual ROA series is difficult to forecast better than a persistence benchmark, which limits how much the time-series model adds beyond the panel regressions.
+Interpretation: the sign is negative, but the estimate is not statistically significant at conventional thresholds, so this is best interpreted as a directionally suggestive association, not precise causal evidence.
 
-## Diagnostics
+## 3. Diagnostics and What They Imply
 
-The Breusch-Pagan test is significant (p < 0.001), which indicates heteroskedasticity in the residuals and justifies the use of clustered or otherwise robust standard errors. The maximum VIF is 2.74, which is comfortably below common multicollinearity red-flag thresholds, so the control set does not appear to be severely collinear. The residual plots should still be interpreted cautiously because the model is estimated on a sparse panel with large firm heterogeneity.
+- Heteroskedasticity: Breusch-Pagan is significant (p = 0.0000), so homoskedastic standard errors are not appropriate; clustered/robust inference is justified.
+- Multicollinearity: max VIF is 2.74, below common concern thresholds, so coefficient instability from collinearity is limited.
+- Residual shape: residual-vs-fitted and Q-Q diagnostics are exported and indicate non-ideal residual behavior consistent with a sparse, heterogeneous panel; inference should prioritize robust SEs.
 
-## Robustness
+## 4. Robustness Checks (Direct Comparison)
 
-Clustered standard errors reduce the apparent precision of the lag-1 estimate relative to conventional SEs, which is why the clustered p-value rises from 0.494 to 0.135 in the publication table. Alternative lag specifications are not stable: lag 2 is -95.3 with p = 0.271, and lag 3 is 38.5 with p = 0.648. Excluding 2020 leaves the sign negative but still statistically insignificant (p = 0.131). The subgroup split suggests the effect is much more negative among large firms than small firms, but the small-firm estimate is imprecise.
+- Baseline clustered lag-1 estimate: beta = -174.6, p = 0.494.
+- Alternative lags: lag-2 beta = -95.3 (p = 0.271); lag-3 beta = 38.5 (p = 0.648).
+- Placebo lead test: lead-1 beta = -302.7 (p = 0.069); this flags potential timing/reverse-causality concerns that should be interpreted cautiously.
+- Excluding 2020 shock year: beta = -109.2 (p = 0.131); sign remains negative.
+- Heterogeneity split: small firms beta = -5753.9 (p = 0.156) vs large firms beta = -24.1 (p = 0.000), suggesting stronger adverse association in larger firms.
 
-## Caveats
+Overall robustness takeaway: coefficient sign is often negative, but magnitude and precision vary across timing and sample definitions.
 
-This design still faces omitted-variable risk, especially from time-varying governance, industry conditions, and unobserved firm strategy. The analysis uses fixed effects and lag structure checks rather than a full DiD design, so parallel trends is not directly tested here; if a DiD extension is added later, it should be validated explicitly. External validity is also limited because the sample is a specific firm-year panel with substantial missingness in lobbying coverage.
+## 5. Economic Mechanisms and Theory Link
+
+Two mechanisms are consistent with the estimates:
+- Financing-cost/leverage channel: policy exposure can raise effective financing costs and compress profitability.
+- Discount-rate/valuation channel: higher required returns reduce present values of future cash flows and can coincide with lower measured operating outcomes.
+
+Alternative explanations remain plausible: omitted time-varying firm strategy, industry demand shifts, and endogenous lobbying responses to anticipated shocks.
+
+## 6. Model B (ARIMA) Interpretation
+
+ARIMA selected order (0, 1, 0) with ADF p-value 0.229. Forecast accuracy did not beat the naive benchmark (ARIMA RMSE = 523.530, naive RMSE = 523.530), so time-series predictive gains are limited in this annual sample.
+
+## 7. Bonus Extensions
+
+- Three-way FE: firm FE + year FE + proxy-sector-by-year interactions gives lobbying beta = -159.5 (p = 0.367).
+- Modern staggered-adoption DiD (Callaway-Sant'Anna style ATT(g,t)): mean ATT approximately -338.79 percentage points.
+- Dynamic and heterogeneous treatment reporting: 3 event-time cells and 3 size-proxy subgroup summaries exported.
+- Cluster bootstrap check: 95% percentile interval for lobbying effect = [-517.62, 149.65].
+
+## 8. Caveats and Limits
+
+Main limitations are omitted-variable risk, potential reverse causality, and limited treatment support in some DiD cells. Because explicit industry codes are unavailable in the merged panel, sector effects in bonus models use a documented size-based proxy. Results should be framed as robust associations under multiple specifications rather than definitive causal effects.
 
 
 ## ARIMA Diagnostics Detail

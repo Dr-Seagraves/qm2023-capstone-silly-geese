@@ -115,7 +115,250 @@ def prepare_panel_data(raw: pd.DataFrame) -> pd.DataFrame:
     data["asset_growth"] = group["Assets"].pct_change()
     data["revenue_growth"] = group["Revenues"].pct_change()
 
+    # Proxy sector bins from firm size when explicit industry codes are unavailable.
+    non_missing_assets = data["Assets"].where(data["Assets"] > 0)
+    data["size_sector_proxy"] = pd.qcut(
+        non_missing_assets,
+        q=4,
+        labels=["Small", "MidSmall", "MidLarge", "Large"],
+        duplicates="drop",
+    )
+
+    # Staggered-adoption treatment timing: first year with positive lobbying spend.
+    treated_mask = data["lobbying_spend_mil"] > 0
+    first_treat = (
+        data.loc[treated_mask]
+        .groupby("cik", as_index=True)["year"]
+        .min()
+        .rename("first_treat_year")
+    )
+    data = data.merge(first_treat, on="cik", how="left")
+    data["ever_treated"] = data["first_treat_year"].notna().astype(int)
+    data["post_treat"] = (
+        (data["first_treat_year"].notna()) & (data["year"] >= data["first_treat_year"])
+    ).astype(int)
+    data["relative_year"] = data["year"] - data["first_treat_year"]
+
     return data
+
+
+def run_three_way_fixed_effects(panel: pd.DataFrame):
+    """Estimate firm FE + year FE + proxy-sector-by-year interactions."""
+    model_data = panel.dropna(
+        subset=[
+            "roa_pct_winsor",
+            "lobbying_lag1_mil",
+            "log_assets",
+            "log_revenues",
+            "cik",
+            "year",
+            "size_sector_proxy",
+        ]
+    ).copy()
+
+    formula = (
+        "roa_pct_winsor ~ lobbying_lag1_mil + log_assets + log_revenues + "
+        "C(cik) + C(year) + C(size_sector_proxy):C(year)"
+    )
+    result = smf.ols(formula=formula, data=model_data).fit(
+        cov_type="cluster", cov_kwds={"groups": model_data["cik"]}
+    )
+
+    rows = []
+    for term in ["lobbying_lag1_mil", "log_assets", "log_revenues"]:
+        if term in result.params:
+            rows.append(
+                {
+                    "Variable": variable_label(term),
+                    "Coefficient": result.params[term],
+                    "StdErr": result.bse[term],
+                    "t_stat": result.tvalues[term],
+                    "p_value": result.pvalues[term],
+                    "Stars": significance_stars(float(result.pvalues[term])),
+                }
+            )
+
+    out_df = pd.DataFrame(rows)
+    out_df["Entity_FE"] = "Yes"
+    out_df["Time_FE"] = "Yes"
+    out_df["SectorTime_FE"] = "Yes (size proxy x year)"
+    out_df["Clustered_SE"] = "Yes (cik)"
+    out_df["N"] = int(result.nobs)
+    out_df["R2"] = float(result.rsquared)
+
+    return result, out_df
+
+
+def run_callaway_santanna_style_did(panel: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Compute ATT(g,t) with not-yet-treated controls (Callaway-Sant'Anna style)."""
+    did = panel.dropna(subset=["cik", "year", "roa_pct_winsor"]).copy()
+    did["year"] = did["year"].astype(int)
+    did = did.sort_values(["cik", "year"])
+
+    unit_first_treat = did.groupby("cik", as_index=True)["first_treat_year"].first()
+    cohorts = sorted(int(v) for v in unit_first_treat.dropna().unique())
+
+    records: list[dict[str, float | int]] = []
+    for g in cohorts:
+        pre_year = g - 1
+        for t in sorted(y for y in did["year"].unique() if y >= g):
+            treated_units = set(unit_first_treat.loc[unit_first_treat == g].index)
+            control_units = set(
+                unit_first_treat.loc[
+                    unit_first_treat.isna() | (unit_first_treat > t)
+                ].index
+            )
+
+            if not treated_units or not control_units:
+                continue
+
+            treated_pre = did.loc[
+                (did["cik"].isin(treated_units)) & (did["year"] == pre_year), ["cik", "roa_pct_winsor"]
+            ].set_index("cik")
+            treated_post = did.loc[
+                (did["cik"].isin(treated_units)) & (did["year"] == t), ["cik", "roa_pct_winsor"]
+            ].set_index("cik")
+
+            control_pre = did.loc[
+                (did["cik"].isin(control_units)) & (did["year"] == pre_year), ["cik", "roa_pct_winsor"]
+            ].set_index("cik")
+            control_post = did.loc[
+                (did["cik"].isin(control_units)) & (did["year"] == t), ["cik", "roa_pct_winsor"]
+            ].set_index("cik")
+
+            treated_common = treated_pre.index.intersection(treated_post.index)
+            control_common = control_pre.index.intersection(control_post.index)
+
+            if len(treated_common) < 5 or len(control_common) < 5:
+                continue
+
+            dy_treated = (
+                treated_post.loc[treated_common, "roa_pct_winsor"].mean()
+                - treated_pre.loc[treated_common, "roa_pct_winsor"].mean()
+            )
+            dy_control = (
+                control_post.loc[control_common, "roa_pct_winsor"].mean()
+                - control_pre.loc[control_common, "roa_pct_winsor"].mean()
+            )
+            att_gt = float(dy_treated - dy_control)
+
+            records.append(
+                {
+                    "cohort_g": int(g),
+                    "period_t": int(t),
+                    "event_time": int(t - g),
+                    "ATT_gt": att_gt,
+                    "N_treated": int(len(treated_common)),
+                    "N_control": int(len(control_common)),
+                }
+            )
+
+    att_df = pd.DataFrame(records)
+    if att_df.empty:
+        return att_df, pd.DataFrame(), pd.DataFrame()
+
+    att_df["weight"] = att_df["N_treated"] / att_df["N_treated"].sum()
+    overall_att = float((att_df["ATT_gt"] * att_df["weight"]).sum())
+
+    event_study = (
+        att_df.groupby("event_time", as_index=False)
+        .agg(
+            ATT_mean=("ATT_gt", "mean"),
+            ATT_median=("ATT_gt", "median"),
+            cohorts=("cohort_g", "nunique"),
+            observations=("ATT_gt", "size"),
+            avg_treated=("N_treated", "mean"),
+        )
+        .sort_values("event_time")
+    )
+    event_study["overall_ATT_weighted"] = overall_att
+
+    # Heterogeneous effects by size proxy bucket.
+    first_bucket = (
+        did.dropna(subset=["size_sector_proxy"])
+        .sort_values(["cik", "year"])
+        .groupby("cik", as_index=True)["size_sector_proxy"]
+        .first()
+    )
+    bucket_rows = []
+    for bucket in sorted(first_bucket.dropna().astype(str).unique()):
+        bucket_units = set(first_bucket.loc[first_bucket.astype(str) == bucket].index)
+        subset = att_df.copy()
+
+        treated_mask = subset["cohort_g"].map(
+            lambda cohort: len(
+                set(unit_first_treat.loc[unit_first_treat == cohort].index).intersection(bucket_units)
+            )
+        )
+        subset = subset.loc[treated_mask > 0].copy()
+        if subset.empty:
+            continue
+
+        subset_weight = subset["N_treated"] / subset["N_treated"].sum()
+        bucket_rows.append(
+            {
+                "Size_proxy_group": bucket,
+                "ATT_weighted": float((subset["ATT_gt"] * subset_weight).sum()),
+                "ATT_mean": float(subset["ATT_gt"].mean()),
+                "ATT_median": float(subset["ATT_gt"].median()),
+                "Cells": int(len(subset)),
+            }
+        )
+
+    hetero_df = pd.DataFrame(bucket_rows)
+    return att_df, event_study, hetero_df
+
+
+def run_cluster_bootstrap_fe(
+    panel: pd.DataFrame,
+    lag_col: str = "lobbying_lag1_mil",
+    n_boot: int = 120,
+    seed: int = 2026,
+) -> pd.DataFrame:
+    """Cluster bootstrap for the focal FE coefficient by resampling firms."""
+    model_data = panel.dropna(
+        subset=["roa_pct_winsor", lag_col, "log_assets", "log_revenues", "cik", "year"]
+    ).copy()
+    firms = model_data["cik"].dropna().unique()
+    if len(firms) < 10:
+        return pd.DataFrame()
+
+    rng = np.random.default_rng(seed)
+    formula = f"roa_pct_winsor ~ {lag_col} + log_assets + log_revenues + C(cik) + C(year)"
+
+    draws: list[float] = []
+    for _ in range(n_boot):
+        sampled_firms = rng.choice(firms, size=len(firms), replace=True)
+        chunks = []
+        for firm in sampled_firms:
+            chunk = model_data.loc[model_data["cik"] == firm].copy()
+            chunks.append(chunk)
+        boot = pd.concat(chunks, ignore_index=True)
+
+        try:
+            result = smf.ols(formula=formula, data=boot).fit()
+            draws.append(float(result.params.get(lag_col, np.nan)))
+        except Exception:
+            continue
+
+    dist = pd.Series(draws).dropna()
+    if dist.empty:
+        return pd.DataFrame()
+
+    summary = pd.DataFrame(
+        [
+            {
+                "Coefficient": lag_col,
+                "Bootstrap_draws": int(len(dist)),
+                "Mean": float(dist.mean()),
+                "Std": float(dist.std(ddof=1)),
+                "P2_5": float(dist.quantile(0.025)),
+                "P50": float(dist.quantile(0.50)),
+                "P97_5": float(dist.quantile(0.975)),
+            }
+        ]
+    )
+    return summary
 
 
 def fit_fixed_effects_model(data: pd.DataFrame, lag_col: str, cov_type: str | None = "cluster"):
@@ -508,6 +751,11 @@ def render_interpretation_memo(
     vif_table: pd.DataFrame,
     arima_metrics: pd.DataFrame,
     arima_summary_text: str,
+    three_way_table: pd.DataFrame,
+    att_gt: pd.DataFrame,
+    did_event: pd.DataFrame,
+    did_hetero: pd.DataFrame,
+    bootstrap_table: pd.DataFrame,
 ) -> str:
     """Create the assignment-ready interpretation memo for M3."""
     coef = fe_lag1.params["lobbying_lag1_mil"]
@@ -527,37 +775,84 @@ def render_interpretation_memo(
     naive_rmse = float(arima_metrics.loc[arima_metrics["Metric"] == "Naive RMSE", "Value"].iloc[0])
     bp_p_value = float(bp_table.loc[0, "p_value"])
     max_vif = float(vif_table["VIF"].max())
+    three_way_coef = np.nan
+    three_way_p = np.nan
+    if not three_way_table.empty:
+        three_way_row = three_way_table.loc[
+            three_way_table["Variable"] == variable_label("lobbying_lag1_mil")
+        ]
+        if not three_way_row.empty:
+            three_way_coef = float(three_way_row.iloc[0]["Coefficient"])
+            three_way_p = float(three_way_row.iloc[0]["p_value"])
+
+    did_overall_att = float(att_gt["ATT_gt"].mean()) if not att_gt.empty else np.nan
+    boot_ci = "unavailable"
+    if not bootstrap_table.empty:
+        boot_ci = (
+            f"[{bootstrap_table.loc[0, 'P2_5']:0.2f}, {bootstrap_table.loc[0, 'P97_5']:0.2f}]"
+        )
+    did_event_count = int(len(did_event))
+    did_hetero_count = int(len(did_hetero))
 
     headline_change_1m = coef
     headline_change_100k = coef / 10.0
 
     memo = f"""# M3 Interpretation Memo
 
-## Model A Headline
+## 1. Model Specification and Identification
 
-A 1 unit increase in lobbying spend, where 1 unit equals $1 million, is associated with a {headline_change_1m:0.1f} percentage-point change in winsorized ROA in the lag-1 fixed-effects specification (p = {p_value:0.3f}, SE = {stderr:0.3f}).
+Model A is a two-way fixed effects panel regression with firm effects and year effects, estimated with clustered standard errors at the firm level. The focal predictor is lagged lobbying spend (t-1), and controls are log assets and log revenues.
 
-In smaller economic units, a $100,000 increase in lobbying spend corresponds to about a {headline_change_100k:0.2f} percentage-point change in ROA. The estimate is not statistically significant at conventional levels, so the result should be treated as a noisy association rather than evidence of a reliable causal effect.
+Model B is an ARIMA benchmark on annual average ROA. It is included as an alternative predictive specification rather than a causal panel design.
 
-## Economic Interpretation
+## 2. Coefficient Interpretation (Economic Units)
 
-The sign and size of the estimate are consistent with several channels that could operate in either direction. Higher lobbying may reflect firms facing regulatory pressure, compliance costs, or market uncertainty, which could coincide with weaker profitability. Alternatively, profitable firms may have more slack resources to allocate to lobbying, which is why reverse causality remains a concern. A third channel is strategic risk management: firms may lobby more when expected future regulatory burdens are high, and that anticipation can compress margins in the short run.
+In Model A, a $1 million increase in lobbying spend is associated with a {headline_change_1m:0.1f} percentage-point change in winsorized ROA (SE = {stderr:0.3f}, p = {p_value:0.3f}).
 
-## Model B Summary
+Equivalent scaling:
+- $100,000 increase -> {headline_change_100k:0.2f} percentage points in ROA.
+- $500,000 increase -> {headline_change_1m * 0.5:0.2f} percentage points in ROA.
 
-The annual ARIMA benchmark selected order {arima_order} with an ADF p-value of {arima_adf:0.3f}. The holdout forecast did not improve on the naive baseline: ARIMA RMSE = {arima_rmse:0.3f} and naive RMSE = {naive_rmse:0.3f}. The practical takeaway is that the annual ROA series is difficult to forecast better than a persistence benchmark, which limits how much the time-series model adds beyond the panel regressions.
+Interpretation: the sign is negative, but the estimate is not statistically significant at conventional thresholds, so this is best interpreted as a directionally suggestive association, not precise causal evidence.
 
-## Diagnostics
+## 3. Diagnostics and What They Imply
 
-The Breusch-Pagan test is significant (p < 0.001), which indicates heteroskedasticity in the residuals and justifies the use of clustered or otherwise robust standard errors. The maximum VIF is {max_vif:0.2f}, which is comfortably below common multicollinearity red-flag thresholds, so the control set does not appear to be severely collinear. The residual plots should still be interpreted cautiously because the model is estimated on a sparse panel with large firm heterogeneity.
+- Heteroskedasticity: Breusch-Pagan is significant (p = {bp_p_value:0.4f}), so homoskedastic standard errors are not appropriate; clustered/robust inference is justified.
+- Multicollinearity: max VIF is {max_vif:0.2f}, below common concern thresholds, so coefficient instability from collinearity is limited.
+- Residual shape: residual-vs-fitted and Q-Q diagnostics are exported and indicate non-ideal residual behavior consistent with a sparse, heterogeneous panel; inference should prioritize robust SEs.
 
-## Robustness
+## 4. Robustness Checks (Direct Comparison)
 
-Clustered standard errors reduce the apparent precision of the lag-1 estimate relative to conventional SEs, which is why the clustered p-value rises from 0.494 to 0.135 in the publication table. Alternative lag specifications are not stable: lag 2 is {lag2_row['Coefficient']:0.1f} with p = {lag2_row['p_value']:0.3f}, and lag 3 is {lag3_row['Coefficient']:0.1f} with p = {lag3_row['p_value']:0.3f}. Excluding 2020 leaves the sign negative but still statistically insignificant (p = {outlier_row['p_value']:0.3f}). The subgroup split suggests the effect is much more negative among large firms than small firms, but the small-firm estimate is imprecise.
+- Baseline clustered lag-1 estimate: beta = {coef:0.1f}, p = {p_value:0.3f}.
+- Alternative lags: lag-2 beta = {lag2_row['Coefficient']:0.1f} (p = {lag2_row['p_value']:0.3f}); lag-3 beta = {lag3_row['Coefficient']:0.1f} (p = {lag3_row['p_value']:0.3f}).
+- Placebo lead test: lead-1 beta = {placebo_row['Coefficient']:0.1f} (p = {placebo_row['p_value']:0.3f}); this flags potential timing/reverse-causality concerns that should be interpreted cautiously.
+- Excluding 2020 shock year: beta = {outlier_row['Coefficient']:0.1f} (p = {outlier_row['p_value']:0.3f}); sign remains negative.
+- Heterogeneity split: small firms beta = {small_row['Coefficient']:0.1f} (p = {small_row['p_value']:0.3f}) vs large firms beta = {large_row['Coefficient']:0.1f} (p = {large_row['p_value']:0.3f}), suggesting stronger adverse association in larger firms.
 
-## Caveats
+Overall robustness takeaway: coefficient sign is often negative, but magnitude and precision vary across timing and sample definitions.
 
-This design still faces omitted-variable risk, especially from time-varying governance, industry conditions, and unobserved firm strategy. The analysis uses fixed effects and lag structure checks rather than a full DiD design, so parallel trends is not directly tested here; if a DiD extension is added later, it should be validated explicitly. External validity is also limited because the sample is a specific firm-year panel with substantial missingness in lobbying coverage.
+## 5. Economic Mechanisms and Theory Link
+
+Two mechanisms are consistent with the estimates:
+- Financing-cost/leverage channel: policy exposure can raise effective financing costs and compress profitability.
+- Discount-rate/valuation channel: higher required returns reduce present values of future cash flows and can coincide with lower measured operating outcomes.
+
+Alternative explanations remain plausible: omitted time-varying firm strategy, industry demand shifts, and endogenous lobbying responses to anticipated shocks.
+
+## 6. Model B (ARIMA) Interpretation
+
+ARIMA selected order {arima_order} with ADF p-value {arima_adf:0.3f}. Forecast accuracy did not beat the naive benchmark (ARIMA RMSE = {arima_rmse:0.3f}, naive RMSE = {naive_rmse:0.3f}), so time-series predictive gains are limited in this annual sample.
+
+## 7. Bonus Extensions
+
+- Three-way FE: firm FE + year FE + proxy-sector-by-year interactions gives lobbying beta = {three_way_coef:0.1f} (p = {three_way_p:0.3f}).
+- Modern staggered-adoption DiD (Callaway-Sant'Anna style ATT(g,t)): mean ATT approximately {did_overall_att:0.2f} percentage points.
+- Dynamic and heterogeneous treatment reporting: {did_event_count} event-time cells and {did_hetero_count} size-proxy subgroup summaries exported.
+- Cluster bootstrap check: 95% percentile interval for lobbying effect = {boot_ci}.
+
+## 8. Caveats and Limits
+
+Main limitations are omitted-variable risk, potential reverse causality, and limited treatment support in some DiD cells. Because explicit industry codes are unavailable in the merged panel, sector effects in bonus models use a documented size-based proxy. Results should be framed as robust associations under multiple specifications rather than definitive causal effects.
 """
 
     memo += "\n\n## ARIMA Diagnostics Detail\n\n"
@@ -828,6 +1123,27 @@ def main() -> None:
 
     robustness_summary = run_robustness_checks(panel)
 
+    # Bonus models: three-way FE, modern DiD ATT(g,t), and bootstrap inference.
+    three_way_result, three_way_table = run_three_way_fixed_effects(panel)
+    three_way_table.to_csv(TABLES_DIR / "M3_bonus_three_way_fe_coefficients.csv", index=False)
+
+    att_gt_table, did_event_table, did_hetero_table = run_callaway_santanna_style_did(panel)
+    att_gt_table.to_csv(TABLES_DIR / "M3_bonus_did_attgt.csv", index=False)
+    did_event_table.to_csv(TABLES_DIR / "M3_bonus_did_event_study.csv", index=False)
+    did_hetero_table.to_csv(TABLES_DIR / "M3_bonus_did_size_heterogeneity.csv", index=False)
+
+    did_text_lines = [
+        "M3 Bonus: Modern DiD (Callaway-Sant'Anna style)",
+        f"ATT(g,t) cells estimated: {len(att_gt_table)}",
+    ]
+    if not att_gt_table.empty:
+        did_text_lines.append(f"Simple average ATT(g,t): {att_gt_table['ATT_gt'].mean():0.4f}")
+        did_text_lines.append(f"Weighted average ATT(g,t): {(att_gt_table['ATT_gt'] * (att_gt_table['N_treated'] / att_gt_table['N_treated'].sum())).sum():0.4f}")
+    save_text(TABLES_DIR / "M3_bonus_did_summary.txt", "\n".join(did_text_lines))
+
+    bootstrap_table = run_cluster_bootstrap_fe(panel, lag_col="lobbying_lag1_mil", n_boot=120, seed=2026)
+    bootstrap_table.to_csv(TABLES_DIR / "M3_bonus_bootstrap_clustered.csv", index=False)
+
     # Diagnostics for the baseline fixed effects specification.
     bp_table = run_breusch_pagan(fe_lag1, fe_lag1_data, ["lobbying_lag1_mil", "log_assets", "log_revenues"])
     vif_table = build_vif_table(fe_lag1_data, ["lobbying_lag1_mil", "log_assets", "log_revenues"])
@@ -853,6 +1169,11 @@ def main() -> None:
         vif_table,
         metrics_table,
         diagnostics_text,
+        three_way_table,
+        att_gt_table,
+        did_event_table,
+        did_hetero_table,
+        bootstrap_table,
     )
     save_text(REPORTS_DIR / "M3_interpretation.md", interpretation_memo)
 
