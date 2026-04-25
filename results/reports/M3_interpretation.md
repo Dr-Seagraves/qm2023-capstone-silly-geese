@@ -14,7 +14,7 @@ Equivalent scaling:
 - $100,000 increase -> -17.46 percentage points in ROA.
 - $500,000 increase -> -87.29 percentage points in ROA.
 
-Interpretation: the sign is negative, but the estimate is not statistically significant at conventional thresholds, so this is best interpreted as a directionally suggestive association, not precise causal evidence.
+Interpretation: the point estimate is negative, but it is imprecise and not statistically different from zero at conventional thresholds. This specification therefore supports an association, not a causal effect estimate.
 
 ## 3. Diagnostics and What They Imply
 
@@ -26,11 +26,11 @@ Interpretation: the sign is negative, but the estimate is not statistically sign
 
 - Baseline clustered lag-1 estimate: beta = -174.6, p = 0.494.
 - Alternative lags: lag-2 beta = -95.3 (p = 0.271); lag-3 beta = 38.5 (p = 0.648).
-- Placebo lead test: lead-1 beta = -302.7 (p = 0.069); this flags potential timing/reverse-causality concerns that should be interpreted cautiously.
+- Placebo lead test: lead-1 beta = -302.7 (p = 0.069); a non-trivial lead effect raises concern that profitability dynamics may precede lobbying changes (timing/reverse-causality risk).
 - Excluding 2020 shock year: beta = -109.2 (p = 0.131); sign remains negative.
 - Heterogeneity split: small firms beta = -5753.9 (p = 0.156) vs large firms beta = -24.1 (p = 0.000), suggesting stronger adverse association in larger firms.
 
-Overall robustness takeaway: coefficient sign is often negative, but magnitude and precision vary across timing and sample definitions.
+Overall robustness takeaway: the negative sign appears frequently, but effect size and precision are unstable across timing and sample definitions. Combined with the lead-placebo signal, causal interpretation should remain limited.
 
 ## 5. Economic Mechanisms and Theory Link
 
@@ -53,7 +53,7 @@ ARIMA selected order (0, 1, 0) with ADF p-value 0.229. Forecast accuracy did not
 
 ## 8. Caveats and Limits
 
-Main limitations are omitted-variable risk, potential reverse causality, and limited treatment support in some DiD cells. Because explicit industry codes are unavailable in the merged panel, sector effects in bonus models use a documented size-based proxy. Results should be framed as robust associations under multiple specifications rather than definitive causal effects.
+Main limitations are omitted-variable risk, potential reverse causality, and limited treatment support in some DiD cells. Because explicit industry codes are unavailable in the merged panel, sector effects in bonus models use a documented size-based proxy. The empirical evidence here is best framed as pattern-consistent associations under multiple specifications, not definitive causal effects of lobbying on profitability.
 
 
 ## ARIMA Diagnostics Detail

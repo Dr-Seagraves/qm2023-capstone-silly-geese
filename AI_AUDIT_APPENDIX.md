@@ -266,6 +266,32 @@ Use one entry per substantial AI-assisted action.
 - Bonus generated:
   - Three-way FE table, modern DiD ATT(g,t) tables, cluster bootstrap table
 
+### Entry 13: Milestone 3 Polishing and Final Verification
+- **Date:** 2026-04-25
+- **Team Member:** Project team (via VS Code Copilot session)
+- **Task:** Polish Milestone 3 presentation deliverables and tighten interpretation language
+- **AI Prompt:** "Fix final M3 issues: cleaner academic regression table, cautious interpretation framing, and explicit M3 audit documentation"
+- **AI Output:**
+  - Refactored regression-table export into academic style with one column per model, variable rows, and parenthesized standard errors on separate lines
+  - Added summary rows for fixed effects, clustered SE status, observations, and adjusted R-squared
+  - Tightened memo language to avoid causal overstatement and explicitly note reverse-causality risk from the lead/placebo check
+  - Added this explicit M3 final-polish audit record
+- **Files Affected:**
+  - `code/capstone_models.py`
+  - `results/tables/M3_regression_table.csv`
+  - `results/tables/M3_regression_table_academic.csv`
+  - `results/tables/M3_regression_table_academic.xlsx` (if engine available)
+  - `results/reports/M3_interpretation.md`
+  - `AI_AUDIT_APPENDIX.md`
+- **Validation Performed:**
+  - Re-ran `python code/capstone_models.py` end-to-end
+  - Confirmed refreshed tables were written to `results/tables/`
+  - Checked memo text reflects association-first framing and explicitly avoids definitive causal claims
+  - Verified no new errors in modified files via VS Code problems check
+- **Edits After AI:** Team-reviewed wording and retained conservative interpretation language
+- **Status:** Accepted with changes
+- **Notes:** This entry documents the final pre-submission presentation and documentation pass for Milestone 3.
+
 
 **AI Use Disclosure**
 AI tools were used to assist with debugging, code structuring, and documentation drafting. All outputs were reviewed, tested, and validated manually. The research design, data decisions, and interpretation of results were completed independently by the project team.

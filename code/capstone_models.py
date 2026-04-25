@@ -649,14 +649,21 @@ def run_robustness_checks(panel: pd.DataFrame) -> pd.DataFrame:
     return summary_df
 
 
-def format_table_cell(result, term: str) -> str:
-    """Format a coefficient and standard error for a publication-style table cell."""
+def format_coef_cell(result, term: str) -> str:
+    """Format coefficient with significance stars for a publication-style table."""
     if term not in result.params:
-        return "—"
+        return ""
     coefficient = result.params[term]
-    stderr = result.bse[term]
     p_value = result.pvalues[term]
-    return f"{coefficient:0.3f}{significance_stars(float(p_value))}\n({stderr:0.3f})"
+    return f"{coefficient:0.3f}{significance_stars(float(p_value))}"
+
+
+def format_se_cell(result, term: str) -> str:
+    """Format parenthesized standard error for a publication-style table."""
+    if term not in result.bse:
+        return ""
+    stderr = result.bse[term]
+    return f"({stderr:0.3f})"
 
 
 def build_publication_table(
@@ -664,61 +671,89 @@ def build_publication_table(
     model_2,
     model_3,
 ) -> pd.DataFrame:
-    """Create a compact publication-ready regression table in wide CSV format."""
+    """Create an academic-style regression table with coefficient/SE rows."""
+    col_1 = "(1) FE Baseline"
+    col_2 = "(2) FE Clustered SE"
+    col_3 = "(3) FE Lag 2 (Clustered SE)"
+
     rows = [
         {
-            "Statistic": "Driver lag",
-            "Model 1: FE (Baseline)": "t-1",
-            "Model 2: FE (Clustered SE)": "t-1",
-            "Model 3: FE (Lag 2)": "t-2",
+            "Variable": "Lobbying spend, t-1 ($M)",
+            col_1: format_coef_cell(model_1, "lobbying_lag1_mil"),
+            col_2: format_coef_cell(model_2, "lobbying_lag1_mil"),
+            col_3: "",
         },
         {
-            "Statistic": "Lobbying spend coefficient",
-            "Model 1: FE (Baseline)": format_table_cell(model_1, "lobbying_lag1_mil"),
-            "Model 2: FE (Clustered SE)": format_table_cell(model_2, "lobbying_lag1_mil"),
-            "Model 3: FE (Lag 2)": format_table_cell(model_3, "lobbying_lag2_mil"),
+            "Variable": "",
+            col_1: format_se_cell(model_1, "lobbying_lag1_mil"),
+            col_2: format_se_cell(model_2, "lobbying_lag1_mil"),
+            col_3: "",
         },
         {
-            "Statistic": "Log(Assets)",
-            "Model 1: FE (Baseline)": format_table_cell(model_1, "log_assets"),
-            "Model 2: FE (Clustered SE)": format_table_cell(model_2, "log_assets"),
-            "Model 3: FE (Lag 2)": format_table_cell(model_3, "log_assets"),
+            "Variable": "Lobbying spend, t-2 ($M)",
+            col_1: "",
+            col_2: "",
+            col_3: format_coef_cell(model_3, "lobbying_lag2_mil"),
         },
         {
-            "Statistic": "Log(Revenues)",
-            "Model 1: FE (Baseline)": format_table_cell(model_1, "log_revenues"),
-            "Model 2: FE (Clustered SE)": format_table_cell(model_2, "log_revenues"),
-            "Model 3: FE (Lag 2)": format_table_cell(model_3, "log_revenues"),
+            "Variable": "",
+            col_1: "",
+            col_2: "",
+            col_3: format_se_cell(model_3, "lobbying_lag2_mil"),
         },
         {
-            "Statistic": "Entity FE",
-            "Model 1: FE (Baseline)": "Yes",
-            "Model 2: FE (Clustered SE)": "Yes",
-            "Model 3: FE (Lag 2)": "Yes",
+            "Variable": "Log(Assets)",
+            col_1: format_coef_cell(model_1, "log_assets"),
+            col_2: format_coef_cell(model_2, "log_assets"),
+            col_3: format_coef_cell(model_3, "log_assets"),
         },
         {
-            "Statistic": "Time FE",
-            "Model 1: FE (Baseline)": "Yes",
-            "Model 2: FE (Clustered SE)": "Yes",
-            "Model 3: FE (Lag 2)": "Yes",
+            "Variable": "",
+            col_1: format_se_cell(model_1, "log_assets"),
+            col_2: format_se_cell(model_2, "log_assets"),
+            col_3: format_se_cell(model_3, "log_assets"),
         },
         {
-            "Statistic": "Clustered SE",
-            "Model 1: FE (Baseline)": "No",
-            "Model 2: FE (Clustered SE)": "Yes",
-            "Model 3: FE (Lag 2)": "Yes",
+            "Variable": "Log(Revenues)",
+            col_1: format_coef_cell(model_1, "log_revenues"),
+            col_2: format_coef_cell(model_2, "log_revenues"),
+            col_3: format_coef_cell(model_3, "log_revenues"),
         },
         {
-            "Statistic": "N",
-            "Model 1: FE (Baseline)": int(model_1.nobs),
-            "Model 2: FE (Clustered SE)": int(model_2.nobs),
-            "Model 3: FE (Lag 2)": int(model_3.nobs),
+            "Variable": "",
+            col_1: format_se_cell(model_1, "log_revenues"),
+            col_2: format_se_cell(model_2, "log_revenues"),
+            col_3: format_se_cell(model_3, "log_revenues"),
         },
         {
-            "Statistic": "R^2",
-            "Model 1: FE (Baseline)": f"{model_1.rsquared:0.3f}",
-            "Model 2: FE (Clustered SE)": f"{model_2.rsquared:0.3f}",
-            "Model 3: FE (Lag 2)": f"{model_3.rsquared:0.3f}",
+            "Variable": "Entity FE",
+            col_1: "Yes",
+            col_2: "Yes",
+            col_3: "Yes",
+        },
+        {
+            "Variable": "Time FE",
+            col_1: "Yes",
+            col_2: "Yes",
+            col_3: "Yes",
+        },
+        {
+            "Variable": "Clustered SE (firm level)",
+            col_1: "No",
+            col_2: "Yes",
+            col_3: "Yes",
+        },
+        {
+            "Variable": "Observations",
+            col_1: int(model_1.nobs),
+            col_2: int(model_2.nobs),
+            col_3: int(model_3.nobs),
+        },
+        {
+            "Variable": "Adjusted R-squared",
+            col_1: f"{model_1.rsquared_adj:0.3f}",
+            col_2: f"{model_2.rsquared_adj:0.3f}",
+            col_3: f"{model_3.rsquared_adj:0.3f}",
         },
     ]
     return pd.DataFrame(rows)
@@ -813,7 +848,7 @@ Equivalent scaling:
 - $100,000 increase -> {headline_change_100k:0.2f} percentage points in ROA.
 - $500,000 increase -> {headline_change_1m * 0.5:0.2f} percentage points in ROA.
 
-Interpretation: the sign is negative, but the estimate is not statistically significant at conventional thresholds, so this is best interpreted as a directionally suggestive association, not precise causal evidence.
+Interpretation: the point estimate is negative, but it is imprecise and not statistically different from zero at conventional thresholds. This specification therefore supports an association, not a causal effect estimate.
 
 ## 3. Diagnostics and What They Imply
 
@@ -825,11 +860,11 @@ Interpretation: the sign is negative, but the estimate is not statistically sign
 
 - Baseline clustered lag-1 estimate: beta = {coef:0.1f}, p = {p_value:0.3f}.
 - Alternative lags: lag-2 beta = {lag2_row['Coefficient']:0.1f} (p = {lag2_row['p_value']:0.3f}); lag-3 beta = {lag3_row['Coefficient']:0.1f} (p = {lag3_row['p_value']:0.3f}).
-- Placebo lead test: lead-1 beta = {placebo_row['Coefficient']:0.1f} (p = {placebo_row['p_value']:0.3f}); this flags potential timing/reverse-causality concerns that should be interpreted cautiously.
+- Placebo lead test: lead-1 beta = {placebo_row['Coefficient']:0.1f} (p = {placebo_row['p_value']:0.3f}); a non-trivial lead effect raises concern that profitability dynamics may precede lobbying changes (timing/reverse-causality risk).
 - Excluding 2020 shock year: beta = {outlier_row['Coefficient']:0.1f} (p = {outlier_row['p_value']:0.3f}); sign remains negative.
 - Heterogeneity split: small firms beta = {small_row['Coefficient']:0.1f} (p = {small_row['p_value']:0.3f}) vs large firms beta = {large_row['Coefficient']:0.1f} (p = {large_row['p_value']:0.3f}), suggesting stronger adverse association in larger firms.
 
-Overall robustness takeaway: coefficient sign is often negative, but magnitude and precision vary across timing and sample definitions.
+Overall robustness takeaway: the negative sign appears frequently, but effect size and precision are unstable across timing and sample definitions. Combined with the lead-placebo signal, causal interpretation should remain limited.
 
 ## 5. Economic Mechanisms and Theory Link
 
@@ -852,7 +887,7 @@ ARIMA selected order {arima_order} with ADF p-value {arima_adf:0.3f}. Forecast a
 
 ## 8. Caveats and Limits
 
-Main limitations are omitted-variable risk, potential reverse causality, and limited treatment support in some DiD cells. Because explicit industry codes are unavailable in the merged panel, sector effects in bonus models use a documented size-based proxy. Results should be framed as robust associations under multiple specifications rather than definitive causal effects.
+Main limitations are omitted-variable risk, potential reverse causality, and limited treatment support in some DiD cells. Because explicit industry codes are unavailable in the merged panel, sector effects in bonus models use a documented size-based proxy. The empirical evidence here is best framed as pattern-consistent associations under multiple specifications, not definitive causal effects of lobbying on profitability.
 """
 
     memo += "\n\n## ARIMA Diagnostics Detail\n\n"
@@ -1157,7 +1192,14 @@ def main() -> None:
 
     publication_table = build_publication_table(fe_lag1_standard, fe_lag1, fe_lag2)
     publication_table.to_csv(TABLES_DIR / "M3_regression_table.csv", index=False)
+    publication_table.to_csv(TABLES_DIR / "M3_regression_table_academic.csv", index=False)
     save_text(TABLES_DIR / "M3_regression_table.txt", publication_table.to_string(index=False))
+
+    # Save an Excel version when an engine is available; CSV remains the baseline deliverable.
+    try:
+        publication_table.to_excel(TABLES_DIR / "M3_regression_table_academic.xlsx", index=False)
+    except Exception:
+        pass
 
     interpretation_memo = render_interpretation_memo(
         fe_lag1_standard,
