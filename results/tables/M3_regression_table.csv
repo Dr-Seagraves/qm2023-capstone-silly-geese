@@ -1,0 +1,14 @@
+Variable,(1) FE Baseline,(2) FE Clustered SE,(3) FE Lag 2 (Clustered SE)
+"Lobbying spend, t-1 ($M)",-174.587,-174.587,
+,(255.299),(116.934),
+"Lobbying spend, t-2 ($M)",,,-95.348
+,,,(86.703)
+Log(Assets),234.706***,234.706,94.545
+,(46.099),(148.659),(92.284)
+Log(Revenues),47.835,47.835,37.070
+,(36.968),(43.565),(39.626)
+Entity FE,Yes,Yes,Yes
+Time FE,Yes,Yes,Yes
+Clustered SE (firm level),No,Yes,Yes
+Observations,2125,2125,1700
+Adjusted R-squared,0.587,0.587,0.684

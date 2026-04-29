@@ -1,0 +1,9 @@
+M3 ARIMA Summary
+ADF statistic: -2.1401
+ADF p-value: 0.2287
+Critical values: 1%=-4.6652, 5%=-3.3672, 10%=-2.8030
+Selected order: (0, 1, 0)
+Selected AIC: 129.5193
+ARIMA RMSE: 523.5305
+Naive RMSE: 523.5305
+Future forecast horizon: 6 years

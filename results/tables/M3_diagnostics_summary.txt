@@ -1,0 +1,9 @@
+M3 Diagnostics Summary
+Breusch-Pagan p-value: 0.0000
+Maximum VIF: 2.74
+
+Variance Inflation Factors:
+         Variable      VIF
+       log_assets 2.735087
+     log_revenues 2.728193
+lobbying_lag1_mil 1.029346

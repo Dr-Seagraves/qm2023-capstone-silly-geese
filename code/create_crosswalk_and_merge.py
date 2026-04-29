@@ -230,10 +230,21 @@ def main():
     # Merge datasets
     merged = merge_datasets(financials, lobbying, crosswalk)
     
+    # -----------------------------------
+    # Create ROA (Return on Assets)
+    # -----------------------------------
+    merged["roa"] = merged["NetIncomeLoss"] / merged["Assets"]
+
+    # Optional: avoid division by zero
+    merged.loc[merged["Assets"] == 0, "roa"] = np.nan
+
+    # -----------------------------------
     # Save merged dataset
+    # -----------------------------------
     merged_path = '/workspaces/qm2023-capstone-silly-geese/data/final/merged_financials_lobbying.csv'
     merged.to_csv(merged_path, index=False)
-    print(f"\n✓ Saved merged dataset to {merged_path}")
+
+    print("✓ ROA created")
     
     print("\n" + "="*70)
     print("DONE!")

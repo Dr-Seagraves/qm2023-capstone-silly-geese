@@ -1,0 +1,4 @@
+M3 Bonus: Modern DiD (Callaway-Sant'Anna style)
+ATT(g,t) cells estimated: 3
+Simple average ATT(g,t): -338.7919
+Weighted average ATT(g,t): -319.4136
