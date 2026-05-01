@@ -1,868 +1,1110 @@
 #!/usr/bin/env node
+
 /**
- * Generate Comprehensive Capstone Research Presentation (Enhanced Design)
- * Covers M1 (Data), M2 (EDA), and M3 (Results) with modern navy/light blue design
- * All content preserved; visual design significantly enhanced
+ * Generate a professional, navy-forward capstone deck with speaker notes.
+ * Target runtime: around 10 minutes.
  */
 
-const PptxGenJS = require('pptxgenjs');
 const fs = require('fs');
 const path = require('path');
+const PptxGenJS = require('pptxgenjs');
 
-// Initialize presentation
-const prs = new PptxGenJS();
-prs.defineLayout({ name: 'LAYOUT_WIDE', width: 10, height: 7.5 });
-prs.layout = 'LAYOUT_WIDE';
+const pptx = new PptxGenJS();
+pptx.layout = 'LAYOUT_WIDE';
+pptx.author = 'QM 2023 Capstone Team';
+pptx.company = 'QM 2023';
+pptx.subject = 'Capstone memo presentation';
+pptx.title = 'Corporate Lobbying and Firm Profitability';
+pptx.lang = 'en-US';
 
-// Enhanced color scheme with navy and light blue
-const colors = {
+const C = {
   navy: '102A43',
-  darkNavy: '061621',
+  navyDark: '0A1F33',
+  blue: '58A6FF',
   lightBlue: 'DCEEFF',
-  skyBlue: 'E8F2FF',
-  accentBlue: '0066CC',
-  brightBlue: '1E88E5',
+  ice: 'F3F8FD',
   white: 'FFFFFF',
-  darkText: '24364B',
-  mediumText: '5F7084',
-  lightText: '7A8DA0',
-  background: 'F5F8FB',
-  gold: 'D4AF37',
-  warning: 'FFF3CD',
-  warningBorder: 'FFD700',
+  text: '24364B',
+  muted: '5F7084',
+  border: 'C9D8E8',
+  softBorder: 'DDE8F2',
+  pale: 'E7F1FB',
+  pale2: 'EDF5FF',
+  caution: 'FFEFC7',
 };
 
-// Helper functions
-function addSlide() {
-  return prs.addSlide();
+const outFile = path.resolve(__dirname, '..', 'results', 'reports', 'Capstone_Research_Presentation.pptx');
+const figDir = path.resolve(__dirname, '..', 'results', 'figures');
+
+function stars(p) {
+  if (p < 0.01) return '***';
+  if (p < 0.05) return '**';
+  if (p < 0.1) return '*';
+  return '';
 }
 
-function addBackground(slide) {
-  slide.background = { fill: colors.background };
+function notes(lines) {
+  return lines.join('\n');
 }
 
-function addTopLabel(slide, text) {
-  slide.addShape(prs.ShapeType.roundRect, {
-    x: 0.35,
-    y: 0.2,
-    w: 1.1,
-    h: 0.28,
-    rectRadius: 0.06,
-    fill: { color: colors.accentBlue },
-    line: { color: colors.accentBlue, pt: 0 },
+function addBackground(slide, color = C.ice) {
+  slide.background = { color };
+}
+
+function addTopLabel(slide, label, x = 0.55, y = 0.32) {
+  slide.addShape(pptx.ShapeType.roundRect, {
+    x,
+    y,
+    w: 1.95,
+    h: 0.34,
+    rectRadius: 0.08,
+    fill: { color: C.lightBlue },
+    line: { color: C.lightBlue, pt: 1 },
   });
-  slide.addText(text, {
-    x: 0.35,
-    y: 0.22,
-    w: 1.1,
-    h: 0.24,
+  slide.addText(label.toUpperCase(), {
+    x,
+    y: y + 0.03,
+    w: 1.95,
+    h: 0.22,
     fontFace: 'Trebuchet MS',
-    fontSize: 8,
+    fontSize: 9,
     bold: true,
-    color: colors.white,
+    color: C.navy,
     align: 'center',
+    valign: 'mid',
     margin: 0,
+    charSpacing: 1.1,
   });
 }
 
-function addSlideTitle(slide, title) {
-  // Add accent line
-  slide.addShape(prs.ShapeType.rect, {
-    x: 0.35,
-    y: 0.53,
-    w: 0.06,
-    h: 0.5,
-    fill: { color: colors.accentBlue },
-    line: { type: 'none' },
-  });
-
+function addSlideTitle(slide, title, subtitle = '') {
   slide.addText(title, {
-    x: 0.5,
-    y: 0.6,
-    w: 9.15,
-    h: 0.4,
+    x: 0.55,
+    y: 0.72,
+    w: 8.8,
+    h: subtitle ? 0.46 : 0.38,
     fontFace: 'Trebuchet MS',
-    fontSize: 28,
+    fontSize: 24,
     bold: true,
-    color: colors.navy,
-    align: 'left',
+    color: C.navy,
     margin: 0,
+    fit: 'shrink',
   });
+  if (subtitle) {
+    slide.addText(subtitle, {
+      x: 0.55,
+      y: 1.12,
+      w: 8.9,
+      h: 0.34,
+      fontFace: 'Aptos',
+      fontSize: 10.5,
+      color: C.muted,
+      margin: 0,
+      fit: 'shrink',
+    });
+  }
 }
 
-function addCard(slide, x, y, w, h, bgColor = colors.white, borderColor = colors.lightBlue, borderPt = 0.05) {
-  slide.addShape(prs.ShapeType.roundRect, {
-    x, y, w, h,
-    rectRadius: 0.12,
-    fill: { color: bgColor },
-    line: { color: borderColor, pt: borderPt },
-    shadow: {
-      type: 'outer',
-      angle: 45,
-      blur: 4,
-      color: '000000',
-      opacity: 0.12,
-      offset: 2,
-    },
-  });
-}
-
-function addCardTitle(slide, x, y, w, text) {
-  slide.addText(text, {
+function addCard(slide, x, y, w, h, fill = C.white, line = C.border, shadowOpacity = 0.08) {
+  slide.addShape(pptx.ShapeType.roundRect, {
     x,
     y,
     w,
-    h: 0.28,
-    fontFace: 'Trebuchet MS',
-    fontSize: 12,
-    bold: true,
-    color: colors.navy,
-    align: 'left',
+    h,
+    rectRadius: 0.09,
+    fill: { color: fill },
+    line: { color: line, pt: 1 },
+    shadow: { type: 'outer', color: '000000', blur: 3, offset: 1.5, angle: 45, opacity: shadowOpacity },
   });
 }
 
-function addBulletText(slide, x, y, w, h, bullets, fontSize = 10.5) {
-  const bulletTexts = bullets.map(b => `• ${b}`).join('\n');
-  slide.addText(bulletTexts, {
-    x, y, w, h,
-    fontFace: 'Aptos',
-    fontSize,
-    color: colors.darkText,
-    align: 'left',
-    valign: 'top',
-    margin: [0.1, 0.15, 0.1, 0.15],
-    lineSpacing: 16,
+function addMetricCard(slide, x, y, w, h, label, value, detail, fill = C.white, accent = C.blue) {
+  addCard(slide, x, y, w, h, fill, C.softBorder, 0.08);
+  slide.addShape(pptx.ShapeType.rect, {
+    x,
+    y,
+    w: 0.12,
+    h,
+    fill: { color: accent },
+    line: { color: accent, pt: 0 },
   });
+  slide.addText(label, {
+    x: x + 0.22,
+    y: y + 0.10,
+    w: w - 0.32,
+    h: 0.16,
+    fontFace: 'Aptos',
+    fontSize: 8.5,
+    bold: true,
+    color: C.muted,
+    margin: 0,
+  });
+  slide.addText(value, {
+    x: x + 0.22,
+    y: y + 0.28,
+    w: w - 0.32,
+    h: 0.30,
+    fontFace: 'Trebuchet MS',
+    fontSize: 17,
+    bold: true,
+    color: C.navy,
+    margin: 0,
+    fit: 'shrink',
+  });
+  slide.addText(detail, {
+    x: x + 0.22,
+    y: y + 0.60,
+    w: w - 0.32,
+    h: h - 0.66,
+    fontFace: 'Aptos',
+    fontSize: 9,
+    color: C.text,
+    margin: 0,
+    fit: 'shrink',
+  });
+}
+
+function addImageCard(slide, imagePath, x, y, w, h, caption, sourcePath) {
+  addCard(slide, x, y, w, h, C.white, C.softBorder, 0.08);
+  if (fs.existsSync(imagePath)) {
+    slide.addImage({
+      path: imagePath,
+      x: x + 0.12,
+      y: y + 0.12,
+      w: w - 0.24,
+      h: h - 0.66,
+      sizing: { type: 'contain', w: w - 0.24, h: h - 0.66 },
+    });
+  } else {
+    slide.addText('Figure not found in expected path', {
+      x: x + 0.16,
+      y: y + 0.46,
+      w: w - 0.32,
+      h: 0.36,
+      fontFace: 'Aptos',
+      fontSize: 10,
+      color: C.muted,
+      align: 'center',
+      margin: 0,
+      fit: 'shrink',
+    });
+  }
+  slide.addText(caption, {
+    x: x + 0.14,
+    y: y + h - 0.42,
+    w: w - 0.28,
+    h: 0.16,
+    fontFace: 'Aptos',
+    fontSize: 8.8,
+    italic: true,
+    color: C.muted,
+    margin: 0,
+    fit: 'shrink',
+  });
+  if (sourcePath) {
+    slide.addText(sourcePath, {
+      x: x + 0.14,
+      y: y + h - 0.24,
+      w: w - 0.28,
+      h: 0.15,
+      fontFace: 'Aptos',
+      fontSize: 7.8,
+      color: C.muted,
+      margin: 0,
+      fit: 'shrink',
+    });
+  }
 }
 
 function addFooter(slide, text) {
   slide.addText(text, {
-    x: 0.35,
-    y: 7.1,
-    w: 9.3,
-    h: 0.25,
+    x: 0.55,
+    y: 7.10,
+    w: 8.9,
+    h: 0.16,
     fontFace: 'Aptos',
     fontSize: 8,
-    italic: true,
-    color: colors.lightText,
-    align: 'center',
+    color: C.muted,
     margin: 0,
   });
 }
 
-// ===== SLIDE 1: TITLE SLIDE =====
-let slide = addSlide();
-addBackground(slide);
+function buildTitleSlide() {
+  const slide = pptx.addSlide();
+  slide.background = { color: C.navyDark };
 
-// Decorative header with navy
-slide.addShape(prs.ShapeType.rect, {
-  x: 0,
-  y: 0,
-  w: 10,
-  h: 1.8,
-  fill: { color: colors.navy },
-  line: { type: 'none' },
+  slide.addShape(pptx.ShapeType.ellipse, {
+    x: 7.8,
+    y: -0.8,
+    w: 3.8,
+    h: 3.8,
+    fill: { color: C.blue, transparency: 74 },
+    line: { color: C.blue, transparency: 100, pt: 0 },
+  });
+  slide.addShape(pptx.ShapeType.ellipse, {
+    x: 8.9,
+    y: 3.9,
+    w: 2.3,
+    h: 2.3,
+    fill: { color: C.lightBlue, transparency: 80 },
+    line: { color: C.lightBlue, transparency: 100, pt: 0 },
+  });
+
+  slide.addText('Corporate Lobbying and\nFirm Profitability', {
+    x: 0.72,
+    y: 1.0,
+    w: 5.2,
+    h: 1.30,
+    fontFace: 'Trebuchet MS',
+    fontSize: 33,
+    bold: true,
+    color: C.white,
+    margin: 0,
+    fit: 'shrink',
+  });
+
+  slide.addText('10-minute executive briefing in plain language\nData window: 2010-2020', {
+    x: 0.74,
+    y: 2.45,
+    w: 4.9,
+    h: 0.58,
+    fontFace: 'Aptos',
+    fontSize: 13,
+    color: 'D7E6F7',
+    margin: 0,
+    fit: 'shrink',
+  });
+
+  addMetricCard(slide, 6.1, 1.0, 3.05, 1.0, 'Main FE estimate', '-174.6', 'Lagged lobbying has a negative sign but is not statistically strong.', C.white, C.blue);
+  addMetricCard(slide, 6.1, 2.15, 3.05, 1.0, 'p-value', '0.135', 'Uncertainty is high, so use as a caution signal, not proof.', C.white, C.lightBlue);
+  addMetricCard(slide, 6.1, 3.30, 3.05, 1.0, 'Main sample', '2,125 rows', 'Firm-year observations after lagging and cleaning.', C.white, C.lightBlue);
+  addMetricCard(slide, 6.1, 4.45, 3.05, 1.0, 'Balanced panel', '836 rows', '66 firms with full 2010-2020 histories.', C.white, C.lightBlue);
+
+  slide.addText('Team capstone deck aligned to memo requirements', {
+    x: 0.74,
+    y: 6.62,
+    w: 5.4,
+    h: 0.18,
+    fontFace: 'Aptos',
+    fontSize: 9,
+    color: 'D7E6F7',
+    margin: 0,
+  });
+
+  slide.addNotes(notes([
+    'Timing: about 45 seconds.',
+    'Open with one sentence: our best model points to a negative relationship, but the evidence is not strong enough to claim a clean causal effect.',
+    'Tell the audience this briefing is intentionally non-technical and focused on decision use, risks, and transparency.',
+  ]));
+}
+
+function buildExecutiveSummarySlide() {
+  const slide = pptx.addSlide();
+  addBackground(slide);
+  addTopLabel(slide, 'Executive Summary');
+  addSlideTitle(slide, 'What we found and what to do with it', 'Key finding in 2-3 sentences, then a direct recommendation.');
+
+  addCard(slide, 0.55, 1.55, 6.3, 4.45, C.white, C.softBorder, 0.07);
+  slide.addText('Key finding (plain language)', {
+    x: 0.82,
+    y: 1.85,
+    w: 5.72,
+    h: 0.20,
+    fontFace: 'Trebuchet MS',
+    fontSize: 15,
+    bold: true,
+    color: C.navy,
+    margin: 0,
+  });
+  slide.addText('In our main model, firms that spent more on lobbying in one year tended to have lower profitability in the next year. The size of that estimate is large, but the uncertainty is also large, so this is a directional signal, not a guaranteed effect. The lag pattern and placebo test suggest timing problems, including possible reverse causality.', {
+    x: 0.82,
+    y: 2.18,
+    w: 5.72,
+    h: 1.55,
+    fontFace: 'Aptos',
+    fontSize: 13.8,
+    color: C.text,
+    margin: 0,
+    fit: 'shrink',
+  });
+
+  slide.addText('Recommendation (plain language)', {
+    x: 0.82,
+    y: 3.95,
+    w: 5.72,
+    h: 0.20,
+    fontFace: 'Trebuchet MS',
+    fontSize: 15,
+    bold: true,
+    color: C.navy,
+    margin: 0,
+  });
+  slide.addText('Do not treat lobbying intensity as a stand-alone buy signal. For allocation, overweight steadier cash-flow sectors by about 10-15% and underweight policy-sensitive, lobbying-heavy names by about 10%, unless confirmed by stronger fundamentals.', {
+    x: 0.82,
+    y: 4.28,
+    w: 5.72,
+    h: 1.15,
+    fontFace: 'Aptos',
+    fontSize: 12.8,
+    color: C.text,
+    margin: 0,
+    fit: 'shrink',
+  });
+
+  addMetricCard(slide, 7.05, 1.55, 2.15, 1.02, 'Magnitude', '-174.6', 'Coefficient on lagged lobbying ($M units).', C.white, C.blue);
+  addMetricCard(slide, 7.05, 2.72, 2.15, 1.02, 'Significance', 'p=0.135', 'Not significant at 5 percent.', C.white, C.lightBlue);
+  addMetricCard(slide, 7.05, 3.89, 2.15, 1.02, 'Lag', '1 year', 'Effect is measured with a one-year delay.', C.white, C.lightBlue);
+
+  addFooter(slide, 'Executive summary source: results/tables/M3_fixed_effects_coefficients.csv and results/reports/M3_interpretation.md.');
+  slide.addNotes(notes([
+    'Timing: about 60 seconds.',
+    'Say the key result in one breath: negative direction, weak statistical strength, lagged setup.',
+    'Give one actionable recommendation with a modest tilt range so it sounds realistic and risk-aware.',
+  ]));
+}
+
+function buildMethodologySlide() {
+  const slide = pptx.addSlide();
+  addBackground(slide);
+  addTopLabel(slide, 'Methodology');
+  addSlideTitle(slide, 'Data, sample construction, and model setup', 'This slide explains where the numbers came from and how the model was estimated.');
+
+  addCard(slide, 0.55, 1.5, 4.15, 5.05, C.white, C.softBorder, 0.07);
+  slide.addText('Data sources with citations', {
+    x: 0.82,
+    y: 1.78,
+    w: 3.4,
+    h: 0.2,
+    fontFace: 'Trebuchet MS',
+    fontSize: 14,
+    bold: true,
+    color: C.navy,
+    margin: 0,
+  });
+  slide.addText('1) SEC XBRL 10-K filings (financial statements)\n2) Senate LDA data via LobbyView (lobbying spend)\n3) CIK-GVKEY crosswalk (entity matching)', {
+    x: 0.82,
+    y: 2.10,
+    w: 3.45,
+    h: 1.15,
+    fontFace: 'Aptos',
+    fontSize: 11.5,
+    color: C.text,
+    margin: 0,
+    fit: 'shrink',
+  });
+  slide.addText('Sample construction', {
+    x: 0.82,
+    y: 3.46,
+    w: 3.4,
+    h: 0.2,
+    fontFace: 'Trebuchet MS',
+    fontSize: 14,
+    bold: true,
+    color: C.navy,
+    margin: 0,
+  });
+  slide.addText('Date range: 2010-2020\nMerged panel: n=5,099 firm-years, 1,375 firms\nAfter cleaning + lagging + controls: n=2,125\nBalanced panel robustness set: 836 obs, 66 firms', {
+    x: 0.82,
+    y: 3.78,
+    w: 3.45,
+    h: 1.55,
+    fontFace: 'Aptos',
+    fontSize: 11,
+    color: C.text,
+    margin: 0,
+    fit: 'shrink',
+  });
+
+  addCard(slide, 4.95, 1.5, 4.25, 5.05, C.white, C.softBorder, 0.07);
+  slide.addText('Model equation and variable definitions', {
+    x: 5.22,
+    y: 1.78,
+    w: 3.6,
+    h: 0.2,
+    fontFace: 'Trebuchet MS',
+    fontSize: 14,
+    bold: true,
+    color: C.navy,
+    margin: 0,
+  });
+  slide.addText('ROA_it = b1*Lobby_i,t-1 + b2*log(Assets_it) + b3*log(Revenue_it) + firm FE + year FE + error_it', {
+    x: 5.22,
+    y: 2.10,
+    w: 3.7,
+    h: 0.85,
+    fontFace: 'Aptos',
+    fontSize: 11.8,
+    color: C.text,
+    margin: 0,
+    fit: 'shrink',
+  });
+  slide.addText('ROA: return on assets (profitability)\nLobby_i,t-1: prior-year lobbying spend\nFirm FE: controls for stable firm differences\nYear FE: controls for economy-wide shocks', {
+    x: 5.22,
+    y: 3.18,
+    w: 3.62,
+    h: 1.32,
+    fontFace: 'Aptos',
+    fontSize: 10.6,
+    color: C.text,
+    margin: 0,
+    fit: 'shrink',
+  });
+  addCard(slide, 5.22, 4.70, 3.7, 1.1, C.pale2, C.lightBlue, 0);
+  slide.addText('Standard errors are clustered at the entity (firm) level to handle repeated observations within each company.', {
+    x: 5.38,
+    y: 4.98,
+    w: 3.36,
+    h: 0.62,
+    fontFace: 'Aptos',
+    fontSize: 10.4,
+    bold: true,
+    color: C.navy,
+    margin: 0,
+    fit: 'shrink',
+  });
+
+  addFooter(slide, 'Citations: SEC EDGAR XBRL, LobbyView/Senate LDA, and project crosswalk in data/processed/cik_gvkey_crosswalk.csv.');
+  slide.addNotes(notes([
+    'Timing: about 60 seconds.',
+    'Keep this slide simple: where data came from, how many observations survived cleaning, and why fixed effects plus clustered errors were used.',
+    'For non-economists, define fixed effects as comparing each company mostly to itself across time.',
+  ]));
+}
+
+function buildTable1Slide() {
+  const slide = pptx.addSlide();
+  addBackground(slide);
+  addTopLabel(slide, 'Results');
+  addSlideTitle(slide, 'Table 1. Main fixed-effects regression', 'Coefficients, clustered SE, t-stats, p-values, stars, FE flags, and N.');
+
+  addCard(slide, 0.55, 1.5, 8.85, 5.0, C.white, C.softBorder, 0.07);
+
+  const rows = [
+    [
+      { text: 'Variable', options: { bold: true, color: C.white, fill: { color: C.navy } } },
+      { text: 'Coef.', options: { bold: true, color: C.white, fill: { color: C.navy } } },
+      { text: 'SE (clustered)', options: { bold: true, color: C.white, fill: { color: C.navy } } },
+      { text: 't-stat', options: { bold: true, color: C.white, fill: { color: C.navy } } },
+      { text: 'p-value', options: { bold: true, color: C.white, fill: { color: C.navy } } },
+      { text: 'Stars', options: { bold: true, color: C.white, fill: { color: C.navy } } },
+    ],
+    [
+      { text: 'Lobbying spend, t-1 ($M)' },
+      { text: '-174.587' },
+      { text: '116.934' },
+      { text: '-1.49' },
+      { text: '0.135' },
+      { text: stars(0.135) },
+    ],
+    [
+      { text: 'Log(Assets)' },
+      { text: '234.706' },
+      { text: '148.659' },
+      { text: '1.58' },
+      { text: '0.114' },
+      { text: stars(0.114) },
+    ],
+    [
+      { text: 'Log(Revenue)' },
+      { text: '47.835' },
+      { text: '43.565' },
+      { text: '1.10' },
+      { text: '0.276' },
+      { text: stars(0.276) },
+    ],
+  ];
+
+  slide.addTable(rows, {
+    x: 0.82,
+    y: 1.82,
+    w: 8.32,
+    h: 2.25,
+    colW: [2.6, 1.05, 1.35, 0.8, 0.85, 0.7],
+    rowH: [0.38, 0.52, 0.52, 0.52],
+    border: { type: 'solid', color: C.border, pt: 1 },
+    fill: C.white,
+    margin: 0.06,
+    fontFace: 'Aptos',
+    fontSize: 9.8,
+    color: C.text,
+    valign: 'mid',
+    align: 'center',
+    headerRow: true,
+    bandRow: true,
+    autoFit: false,
+  });
+
+  addMetricCard(slide, 0.82, 4.35, 2.4, 0.95, 'Entity FE', 'Yes', 'Firm fixed effects included.', C.pale2, C.blue);
+  addMetricCard(slide, 3.40, 4.35, 2.4, 0.95, 'Year FE', 'Yes', 'Year fixed effects included.', C.pale2, C.lightBlue);
+  addMetricCard(slide, 5.98, 4.35, 2.4, 0.95, 'N', '2,125', 'Main estimation sample size.', C.pale2, C.lightBlue);
+
+  addCard(slide, 0.82, 5.48, 8.32, 0.84, C.pale, C.lightBlue, 0);
+  slide.addText('Interpretation: roughly, an extra $100K in lobbying is linked with about a 17.5-point lower ROA in the next year, but this estimate is not statistically decisive.', {
+    x: 1.02,
+    y: 5.75,
+    w: 7.95,
+    h: 0.30,
+    fontFace: 'Aptos',
+    fontSize: 11,
+    color: C.navy,
+    margin: 0,
+    fit: 'shrink',
+  });
+
+  addFooter(slide, 'Stars: * p<0.10, ** p<0.05, *** p<0.01. Source: results/tables/M3_fixed_effects_coefficients.csv.');
+  slide.addNotes(notes([
+    'Timing: about 60 seconds.',
+    'Walk left to right once: coefficient, uncertainty, test statistic, p-value, and stars.',
+    'Plain-language close: the direction is negative, but we cannot call it a firm causal estimate at standard confidence levels.',
+  ]));
+}
+
+function buildTable2AndFigure1Slide() {
+  const slide = pptx.addSlide();
+  addBackground(slide);
+  addTopLabel(slide, 'Results');
+  addSlideTitle(slide, 'Table 2. Alternative spec and Figure 1', 'Alternative models plus a key visual of outcome vs. driver.');
+
+  addCard(slide, 0.55, 1.52, 4.1, 4.95, C.white, C.softBorder, 0.07);
+
+  const altRows = [
+    [
+      { text: 'Spec', options: { bold: true, color: C.white, fill: { color: C.navy } } },
+      { text: 'Result', options: { bold: true, color: C.white, fill: { color: C.navy } } },
+      { text: 'Readout', options: { bold: true, color: C.white, fill: { color: C.navy } } },
+    ],
+    [{ text: 'Three-way FE' }, { text: '-159.5, p=0.367' }, { text: 'Sign stays negative, still weak.' }],
+    [{ text: 'DiD (ATT)' }, { text: '-338.8' }, { text: 'Negative average effect, uncertain precision.' }],
+    [{ text: 'Lead-1 placebo' }, { text: '-302.7*' }, { text: 'Reverse timing is a concern.' }],
+    [{ text: 'ARIMA(0,1,0)' }, { text: 'RMSE=523.5' }, { text: 'No gain over naive benchmark.' }],
+    [{ text: 'Bootstrap CI' }, { text: '[-517.6, 149.7]' }, { text: 'Interval crosses zero.' }],
+  ];
+
+  slide.addTable(altRows, {
+    x: 0.78,
+    y: 1.84,
+    w: 3.6,
+    h: 4.12,
+    colW: [1.0, 1.2, 1.4],
+    rowH: [0.38, 0.52, 0.52, 0.52, 0.52, 0.52],
+    border: { type: 'solid', color: C.border, pt: 1 },
+    fill: C.white,
+    margin: 0.05,
+    fontFace: 'Aptos',
+    fontSize: 8.5,
+    color: C.text,
+    valign: 'mid',
+    align: 'center',
+    headerRow: true,
+    bandRow: true,
+    autoFit: false,
+  });
+
+  const fig1 = path.join(figDir, 'M2', 'plot3_dual_axis_outcome_driver.png');
+  addImageCard(
+    slide,
+    fig1,
+    4.95,
+    1.52,
+    4.25,
+    4.95,
+    'Figure 1. Dual-axis trend of profitability outcome vs. lobbying driver',
+    '../figures/M2/plot3_dual_axis_outcome_driver.png'
+  );
+
+  addFooter(slide, 'Table 2 sources: results/tables/M3_bonus_did_summary.txt, results/tables/M3_arima_metrics.csv, and robustness tables.');
+  slide.addNotes(notes([
+    'Timing: about 55 seconds.',
+    'Say this clearly: most alternatives keep a negative sign, but confidence is still limited because intervals are wide and timing is messy.',
+    'Point to Figure 1 as context, not proof: the visual motivates the relationship but does not identify causality by itself.',
+  ]));
+}
+
+function buildFigure2InterpretationSlide() {
+  const slide = pptx.addSlide();
+  addBackground(slide);
+  addTopLabel(slide, 'Diagnostics');
+  addSlideTitle(slide, 'Figure 2. Diagnostics and economic interpretation', 'Diagnostic fit checks plus translation of the coefficient into business terms.');
+
+  const resid = path.join(figDir, 'M3_residuals_vs_fitted.png');
+  const qq = path.join(figDir, 'M3_qq_plot.png');
+  addImageCard(slide, resid, 0.55, 1.55, 4.15, 3.15, 'Figure 2A. Residuals vs. fitted', '../figures/M3_residuals_vs_fitted.png');
+  addImageCard(slide, qq, 4.95, 1.55, 4.15, 3.15, 'Figure 2B. Q-Q plot', '../figures/M3_qq_plot.png');
+
+  addCard(slide, 0.55, 4.95, 8.55, 1.35, C.pale2, C.lightBlue, 0);
+  slide.addText('Economic magnitude: a $1M increase in lobbying maps to about -174.6 points in next-year ROA in this model. Robustness and theory check: negative sign aligns with defensive-lobbying theory, but the wide uncertainty and placebo lead mean we should treat this as suggestive, not definitive.', {
+    x: 0.82,
+    y: 5.20,
+    w: 8.0,
+    h: 0.74,
+    fontFace: 'Aptos',
+    fontSize: 10.5,
+    color: C.navy,
+    margin: 0,
+    fit: 'shrink',
+  });
+
+  addFooter(slide, 'Diagnostics from results/reports/M3_diagnostics_summary.txt and results/tables/M3_vif_results.csv.');
+  slide.addNotes(notes([
+    'Timing: about 55 seconds.',
+    'Explain in simple terms that the diagnostics show noisy errors, which is why robust clustered uncertainty estimates matter.',
+    'Then translate the coefficient to an economic magnitude but immediately pair it with the uncertainty warning.',
+  ]));
+}
+
+function buildConclusionsRecommendationsSlide() {
+  const slide = pptx.addSlide();
+  slide.background = { color: C.navy };
+
+  slide.addShape(pptx.ShapeType.ellipse, {
+    x: -0.6,
+    y: -0.7,
+    w: 2.3,
+    h: 2.3,
+    fill: { color: C.blue, transparency: 72 },
+    line: { color: C.blue, transparency: 100, pt: 0 },
+  });
+  slide.addShape(pptx.ShapeType.ellipse, {
+    x: 8.7,
+    y: 5.05,
+    w: 2.2,
+    h: 2.2,
+    fill: { color: C.lightBlue, transparency: 78 },
+    line: { color: C.lightBlue, transparency: 100, pt: 0 },
+  });
+
+  slide.addText('Conclusions and\nRecommendations', {
+    x: 0.72,
+    y: 0.88,
+    w: 5.0,
+    h: 1.1,
+    fontFace: 'Trebuchet MS',
+    fontSize: 30,
+    bold: true,
+    color: C.white,
+    margin: 0,
+    fit: 'shrink',
+  });
+
+  addCard(slide, 5.95, 0.85, 3.75, 2.35, C.white, C.softBorder, 0.08);
+  slide.addText('Investment implications', {
+    x: 6.2,
+    y: 1.1,
+    w: 3.2,
+    h: 0.2,
+    fontFace: 'Trebuchet MS',
+    fontSize: 15,
+    bold: true,
+    color: C.navy,
+    margin: 0,
+  });
+  slide.addText('Sector tilt: overweight stable Industrials/Health Care by ~10-15%. Underweight lobbying-heavy, policy-sensitive buckets by ~10%.', {
+    x: 6.2,
+    y: 1.45,
+    w: 3.25,
+    h: 0.78,
+    fontFace: 'Aptos',
+    fontSize: 11,
+    color: C.text,
+    margin: 0,
+    fit: 'shrink',
+  });
+  slide.addText('Factor tilt: quality and earnings stability over policy exposure. Scenario: if lag effect is real, underweight should help with delay; if reverse causality dominates, edge fades.', {
+    x: 6.2,
+    y: 2.23,
+    w: 3.25,
+    h: 0.85,
+    fontFace: 'Aptos',
+    fontSize: 10.2,
+    color: C.text,
+    margin: 0,
+    fit: 'shrink',
+  });
+
+  addCard(slide, 0.74, 2.15, 4.95, 3.85, C.white, C.softBorder, 0.08);
+  slide.addText('Risk assessment and caveats', {
+    x: 1.0,
+    y: 2.45,
+    w: 4.45,
+    h: 0.2,
+    fontFace: 'Trebuchet MS',
+    fontSize: 15,
+    bold: true,
+    color: C.navy,
+    margin: 0,
+  });
+  slide.addText('- FE assumption: time-varying omitted variables may remain.\n- DiD assumption: treatment timing may not satisfy clean parallel trends.\n- Data limitation: lobbying coverage is sparse; sample may over-represent larger firms.\n- External validity: findings may not transfer to private firms or non-U.S. settings.', {
+    x: 1.0,
+    y: 2.84,
+    w: 4.45,
+    h: 2.85,
+    fontFace: 'Aptos',
+    fontSize: 10.4,
+    color: C.text,
+    margin: 0,
+    fit: 'shrink',
+  });
+
+  slide.addText('Bottom line: use lobbying as a caution flag, not a core alpha signal.', {
+    x: 0.74,
+    y: 6.18,
+    w: 4.95,
+    h: 0.30,
+    fontFace: 'Trebuchet MS',
+    fontSize: 14,
+    bold: true,
+    color: C.white,
+    margin: 0,
+    fit: 'shrink',
+  });
+
+  slide.addNotes(notes([
+    'Timing: about 65 seconds.',
+    'State the recommendation as a moderate tilt, not an all-in call.',
+    'Be explicit about risk assumptions so the audience trusts the honesty of the recommendation.',
+  ]));
+}
+
+function buildAddendumTemplateSlide() {
+  const slide = pptx.addSlide();
+  addBackground(slide);
+  addTopLabel(slide, 'Individual Addendum');
+  addSlideTitle(slide, 'Individual addendum template (what to include)', 'Use this structure directly in individual submission pages.');
+
+  addCard(slide, 0.55, 1.55, 4.2, 4.95, C.white, C.softBorder, 0.07);
+  slide.addText('Personal contribution (2-4 bullets)', {
+    x: 0.82,
+    y: 1.85,
+    w: 3.7,
+    h: 0.20,
+    fontFace: 'Trebuchet MS',
+    fontSize: 13,
+    bold: true,
+    color: C.navy,
+    margin: 0,
+  });
+  slide.addText('- Led M1 data cleaning and merge (20 hrs)\n- Built M2 lag analysis visuals (14 hrs)\n- Implemented M3 FE and robustness checks (18 hrs)', {
+    x: 0.82,
+    y: 2.20,
+    w: 3.7,
+    h: 1.25,
+    fontFace: 'Aptos',
+    fontSize: 10.8,
+    color: C.text,
+    margin: 0,
+    fit: 'shrink',
+  });
+
+  slide.addText('Defended decision (1 choice + evidence)', {
+    x: 0.82,
+    y: 3.65,
+    w: 3.7,
+    h: 0.20,
+    fontFace: 'Trebuchet MS',
+    fontSize: 13,
+    bold: true,
+    color: C.navy,
+    margin: 0,
+  });
+  slide.addText('Used a one-year lag because M2 patterns were strongest at 1-2 years and economic logic suggests policy effects are delayed.', {
+    x: 0.82,
+    y: 4.00,
+    w: 3.7,
+    h: 0.85,
+    fontFace: 'Aptos',
+    fontSize: 10.5,
+    color: C.text,
+    margin: 0,
+    fit: 'shrink',
+  });
+
+  addCard(slide, 5.0, 1.55, 4.2, 4.95, C.white, C.softBorder, 0.07);
+  slide.addText('Key limitation', {
+    x: 5.27,
+    y: 1.85,
+    w: 3.7,
+    h: 0.20,
+    fontFace: 'Trebuchet MS',
+    fontSize: 13,
+    bold: true,
+    color: C.navy,
+    margin: 0,
+  });
+  slide.addText('Lobbying participation is sparse and uneven, so estimated effects may mostly reflect larger firms and may miss smaller-firm behavior.', {
+    x: 5.27,
+    y: 2.20,
+    w: 3.7,
+    h: 0.9,
+    fontFace: 'Aptos',
+    fontSize: 10.8,
+    color: C.text,
+    margin: 0,
+    fit: 'shrink',
+  });
+
+  slide.addText('AI audit notes', {
+    x: 5.27,
+    y: 3.35,
+    w: 3.7,
+    h: 0.20,
+    fontFace: 'Trebuchet MS',
+    fontSize: 13,
+    bold: true,
+    color: C.navy,
+    margin: 0,
+  });
+  slide.addText('Document prompt, model output, and manual verification steps for any AI-assisted edits not already in the team appendix.', {
+    x: 5.27,
+    y: 3.70,
+    w: 3.7,
+    h: 0.85,
+    fontFace: 'Aptos',
+    fontSize: 10.5,
+    color: C.text,
+    margin: 0,
+    fit: 'shrink',
+  });
+
+  addCard(slide, 5.27, 4.75, 3.7, 1.2, C.pale2, C.lightBlue, 0);
+  slide.addText('Template reference: individual_addendum_template.md', {
+    x: 5.45,
+    y: 5.08,
+    w: 3.35,
+    h: 0.3,
+    fontFace: 'Aptos',
+    fontSize: 10.2,
+    bold: true,
+    color: C.navy,
+    margin: 0,
+    fit: 'shrink',
+  });
+
+  addFooter(slide, 'Keep addendum specific: tasks, hours, one defended decision, one limitation, and AI verification details.');
+  slide.addNotes(notes([
+    'Timing: about 50 seconds.',
+    'Present this as a checklist that protects both grading clarity and academic integrity.',
+    'Encourage each team member to customize hours and examples with real milestone work.',
+  ]));
+}
+
+function buildRubricSlide() {
+  const slide = pptx.addSlide();
+  addBackground(slide);
+  addTopLabel(slide, 'Rubric');
+  addSlideTitle(slide, 'Grading rubric summary (50 points)', 'What graders are scoring and the reproducibility expectation.');
+
+  addCard(slide, 0.55, 1.55, 8.65, 4.2, C.white, C.softBorder, 0.07);
+
+  const rubricRows = [
+    [
+      { text: 'Component', options: { bold: true, color: C.white, fill: { color: C.navy } } },
+      { text: 'Points', options: { bold: true, color: C.white, fill: { color: C.navy } } },
+      { text: 'What strong work looks like', options: { bold: true, color: C.white, fill: { color: C.navy } } },
+    ],
+    [{ text: 'Reproducibility and rigor' }, { text: '10' }, { text: 'M1-M3 code runs end-to-end and matches memo outputs.' }],
+    [{ text: 'Structure and clarity' }, { text: '10' }, { text: 'Clean organization and non-jargon explanations.' }],
+    [{ text: 'Results and interpretation' }, { text: '12' }, { text: 'Publication-ready tables/figures and economic meaning.' }],
+    [{ text: 'Recommendations and caveats' }, { text: '8' }, { text: 'Actionable advice plus honest limitations.' }],
+    [{ text: 'Individual addendum' }, { text: '10' }, { text: 'Specific contribution, defended choice, key caveat.' }],
+  ];
+
+  slide.addTable(rubricRows, {
+    x: 0.82,
+    y: 1.84,
+    w: 8.12,
+    h: 3.50,
+    colW: [2.2, 0.75, 5.17],
+    rowH: [0.38, 0.54, 0.54, 0.54, 0.54, 0.54],
+    border: { type: 'solid', color: C.border, pt: 1 },
+    fill: C.white,
+    margin: 0.05,
+    fontFace: 'Aptos',
+    fontSize: 9.2,
+    color: C.text,
+    valign: 'mid',
+    align: 'center',
+    headerRow: true,
+    bandRow: true,
+    autoFit: false,
+  });
+
+  addCard(slide, 0.82, 5.48, 8.12, 0.95, C.caution, C.lightBlue, 0);
+  slide.addText('Reproducibility note: M4 is submitted as PDFs, but grading still expects your existing capstone code to run and reproduce memo numbers and figures.', {
+    x: 1.02,
+    y: 5.78,
+    w: 7.75,
+    h: 0.30,
+    fontFace: 'Aptos',
+    fontSize: 10.8,
+    bold: true,
+    color: C.navy,
+    margin: 0,
+    fit: 'shrink',
+  });
+
+  addFooter(slide, 'Detailed criteria reference: rubric.md');
+  slide.addNotes(notes([
+    'Timing: about 50 seconds.',
+    'Highlight that reproducibility is not optional: the code-output chain has to be consistent with the memo tables and figures.',
+    'Use this slide to set expectations and avoid preventable point losses.',
+  ]));
+}
+
+function buildPitfallsSlide() {
+  const slide = pptx.addSlide();
+  addBackground(slide);
+  addTopLabel(slide, 'Quality Control');
+  addSlideTitle(slide, 'Common pitfalls and how to avoid them', 'Especially important: executive summary language should stay non-technical.');
+
+  addCard(slide, 0.55, 1.55, 4.2, 4.95, C.white, C.softBorder, 0.07);
+  slide.addText('Pitfalls', {
+    x: 0.82,
+    y: 1.86,
+    w: 3.7,
+    h: 0.20,
+    fontFace: 'Trebuchet MS',
+    fontSize: 14,
+    bold: true,
+    color: C.navy,
+    margin: 0,
+  });
+  slide.addText('- Executive summary is too technical\n- Tables shown without practical meaning\n- Recommendations ignore uncertainty\n- Limitations listed vaguely instead of specifically', {
+    x: 0.82,
+    y: 2.18,
+    w: 3.7,
+    h: 2.8,
+    fontFace: 'Aptos',
+    fontSize: 10.8,
+    color: C.text,
+    margin: 0,
+    fit: 'shrink',
+  });
+
+  addCard(slide, 5.0, 1.55, 4.2, 4.95, C.white, C.softBorder, 0.07);
+  slide.addText('Fixes', {
+    x: 5.27,
+    y: 1.86,
+    w: 3.7,
+    h: 0.20,
+    fontFace: 'Trebuchet MS',
+    fontSize: 14,
+    bold: true,
+    color: C.navy,
+    margin: 0,
+  });
+  slide.addText('- Use one sentence for direction and one for confidence\n- Translate every key coefficient into business language\n- Tie every recommendation to a risk statement\n- Name one concrete data limitation and why it matters', {
+    x: 5.27,
+    y: 2.18,
+    w: 3.7,
+    h: 2.8,
+    fontFace: 'Aptos',
+    fontSize: 10.8,
+    color: C.text,
+    margin: 0,
+    fit: 'shrink',
+  });
+
+  addCard(slide, 0.82, 5.48, 8.12, 0.95, C.pale2, C.lightBlue, 0);
+  slide.addText('Final speaking rule: if a non-economist cannot explain your takeaway after 30 seconds, simplify the slide wording and notes.', {
+    x: 1.02,
+    y: 5.78,
+    w: 7.75,
+    h: 0.30,
+    fontFace: 'Aptos',
+    fontSize: 10.8,
+    bold: true,
+    color: C.navy,
+    margin: 0,
+    fit: 'shrink',
+  });
+
+  addFooter(slide, 'Use this checklist in final rehearsal before exporting the submission PDF.');
+  slide.addNotes(notes([
+    'Timing: about 45 seconds.',
+    'Close the deck with a quality checklist so the audience sees you are controlling for communication risk, not just model risk.',
+    'Remind presenters to keep language simple and recommendation statements conditional on uncertainty.',
+  ]));
+}
+
+function buildClosingSlide() {
+  const slide = pptx.addSlide();
+  slide.background = { color: C.navyDark };
+
+  slide.addShape(pptx.ShapeType.ellipse, {
+    x: -0.8,
+    y: 4.3,
+    w: 3.0,
+    h: 3.0,
+    fill: { color: C.blue, transparency: 75 },
+    line: { color: C.blue, transparency: 100, pt: 0 },
+  });
+
+  slide.addText('Thank You', {
+    x: 0.9,
+    y: 2.2,
+    w: 3.2,
+    h: 0.5,
+    fontFace: 'Trebuchet MS',
+    fontSize: 36,
+    bold: true,
+    color: C.white,
+    margin: 0,
+  });
+
+  slide.addText('Questions and discussion', {
+    x: 0.9,
+    y: 2.85,
+    w: 3.6,
+    h: 0.32,
+    fontFace: 'Aptos',
+    fontSize: 14,
+    color: 'D7E6F7',
+    margin: 0,
+  });
+
+  addCard(slide, 5.0, 1.35, 4.2, 2.9, C.white, C.softBorder, 0.08);
+  slide.addText('One-line recap', {
+    x: 5.27,
+    y: 1.66,
+    w: 3.7,
+    h: 0.2,
+    fontFace: 'Trebuchet MS',
+    fontSize: 14,
+    bold: true,
+    color: C.navy,
+    margin: 0,
+  });
+  slide.addText('Lobbying appears correlated with weaker later profitability in our panel, but uncertainty and timing effects mean investors should apply the signal cautiously and alongside fundamentals.', {
+    x: 5.27,
+    y: 2.00,
+    w: 3.7,
+    h: 1.45,
+    fontFace: 'Aptos',
+    fontSize: 11,
+    color: C.text,
+    margin: 0,
+    fit: 'shrink',
+  });
+
+  slide.addNotes(notes([
+    'Timing: about 35 seconds.',
+    'Use this slide only to invite questions and repeat the cautious recommendation once.',
+  ]));
+}
+
+buildTitleSlide();
+buildExecutiveSummarySlide();
+buildMethodologySlide();
+buildTable1Slide();
+buildTable2AndFigure1Slide();
+buildFigure2InterpretationSlide();
+buildConclusionsRecommendationsSlide();
+buildAddendumTemplateSlide();
+buildRubricSlide();
+buildPitfallsSlide();
+buildClosingSlide();
+
+fs.mkdirSync(path.dirname(outFile), { recursive: true });
+pptx.writeFile({ fileName: outFile }).then(() => {
+  console.log(`Presentation created: ${outFile}`);
 });
-
-// Accent stripe
-slide.addShape(prs.ShapeType.rect, {
-  x: 0,
-  y: 1.8,
-  w: 10,
-  h: 0.1,
-  fill: { color: colors.accentBlue },
-  line: { type: 'none' },
-});
-
-slide.addText('Corporate Lobbying and Firm Profitability', {
-  x: 0.35,
-  y: 2.6,
-  w: 9.3,
-  h: 0.6,
-  fontFace: 'Trebuchet MS',
-  fontSize: 44,
-  bold: true,
-  color: colors.navy,
-  align: 'center',
-});
-
-slide.addText('A Comprehensive Panel Analysis of U.S. Public Firms (2010–2020)', {
-  x: 0.35,
-  y: 3.35,
-  w: 9.3,
-  h: 0.35,
-  fontFace: 'Aptos',
-  fontSize: 16,
-  color: colors.accentBlue,
-  align: 'center',
-});
-
-slide.addText('Alycia Reji • Gracie Vivion • Shelby Howard • Daniz Mammadova\nQM 2023 Capstone Project', {
-  x: 0.35,
-  y: 4.2,
-  w: 9.3,
-  h: 0.6,
-  fontFace: 'Aptos',
-  fontSize: 12,
-  color: colors.darkText,
-  align: 'center',
-});
-
-// ===== SLIDE 2: RESEARCH QUESTION & OBJECTIVES =====
-slide = addSlide();
-addBackground(slide);
-addTopLabel(slide, 'M1 & Overview');
-addSlideTitle(slide, 'Research Question and Objectives');
-
-// Main content card
-addCard(slide, 0.35, 1.15, 9.3, 5.75, colors.white, colors.lightBlue, 0.05);
-
-slide.addText('Primary Research Question:', {
-  x: 0.65,
-  y: 1.35,
-  w: 8.7,
-  h: 0.28,
-  fontFace: 'Trebuchet MS',
-  fontSize: 13,
-  bold: true,
-  color: colors.navy,
-});
-
-slide.addText('What is the relationship between firms\' lobbying expenditures and their subsequent profitability?', {
-  x: 0.65,
-  y: 1.68,
-  w: 8.7,
-  h: 0.45,
-  fontFace: 'Aptos',
-  fontSize: 11,
-  italic: true,
-  color: colors.accentBlue,
-});
-
-slide.addText('Key Objectives:', {
-  x: 0.65,
-  y: 2.25,
-  w: 8.7,
-  h: 0.25,
-  fontFace: 'Trebuchet MS',
-  fontSize: 12,
-  bold: true,
-  color: colors.navy,
-});
-
-const objectives = [
-  'Merge lobbying expenditure data with firm financial records (2010–2020)',
-  'Conduct exploratory data analysis to identify patterns and relationships',
-  'Estimate panel regression models with fixed effects and robust inference',
-  'Perform robustness checks across lag structures, sample subsets, and firm sizes',
-  'Interpret findings within theoretical frameworks of corporate political activity',
-];
-
-addBulletText(slide, 0.8, 2.55, 8.4, 3.9, objectives, 10.5);
-
-// ===== SLIDE 3: DATA SOURCES AND INTEGRATION =====
-slide = addSlide();
-addBackground(slide);
-addTopLabel(slide, 'Milestone 1');
-addSlideTitle(slide, 'Data Sources and Integration');
-
-// Left card - Lobbying Data
-addCard(slide, 0.35, 1.15, 4.4, 5.5, colors.white, colors.lightBlue, 0.05);
-
-// Header with accent
-slide.addShape(prs.ShapeType.rect, {
-  x: 0.35,
-  y: 1.15,
-  w: 0.05,
-  h: 5.5,
-  fill: { color: colors.accentBlue },
-  line: { type: 'none' },
-});
-
-addCardTitle(slide, 0.6, 1.32, 4, 'Lobbying Data');
-
-const lobbyingPoints = [
-  'Source: Senate Lobbying Disclosure Reports (LobbyView)',
-  'Unit: Firm-year observations',
-  'Period: 2010–2020',
-  'Key variable: Annual total lobbying expenditure (USD)',
-  'Coverage: 1,534 unique firms',
-];
-
-addBulletText(slide, 0.6, 1.65, 4, 4.8, lobbyingPoints, 9);
-
-// Right card - Financial Data
-addCard(slide, 5.25, 1.15, 4.4, 5.5, colors.white, colors.lightBlue, 0.05);
-
-// Header with accent
-slide.addShape(prs.ShapeType.rect, {
-  x: 5.25,
-  y: 1.15,
-  w: 0.05,
-  h: 5.5,
-  fill: { color: colors.accentBlue },
-  line: { type: 'none' },
-});
-
-addCardTitle(slide, 5.5, 1.32, 4, 'Financial Data');
-
-const financialPoints = [
-  'Source: SEC XBRL filings (10-K annual reports)',
-  'Unit: Firm-year observations',
-  'Period: 2010–2020',
-  'Key variables: Total Assets, Net Income, Revenues',
-  'Coverage: 1,375 unique firms',
-];
-
-addBulletText(slide, 5.5, 1.65, 4, 4.8, financialPoints, 9);
-
-// Summary box at bottom
-slide.addShape(prs.ShapeType.roundRect, {
-  x: 0.35,
-  y: 6.75,
-  w: 9.3,
-  h: 0.68,
-  fill: { color: colors.skyBlue },
-  line: { color: colors.accentBlue, pt: 0.03 },
-  rectRadius: 0.1,
-});
-
-slide.addText('After merge: 5,099 firm-year observations across 1,375 firms; balanced panel yielded 836 observations (66 firms with complete 2010–2020 data)', {
-  x: 0.5,
-  y: 6.8,
-  w: 9,
-  h: 0.58,
-  fontFace: 'Aptos',
-  fontSize: 9.5,
-  color: colors.navy,
-  align: 'center',
-  valign: 'middle',
-  bold: true,
-});
-
-// ===== SLIDE 4: M2 EDA - DESCRIPTIVE STATISTICS =====
-slide = addSlide();
-addBackground(slide);
-addTopLabel(slide, 'Milestone 2');
-addSlideTitle(slide, 'Exploratory Data Analysis: Key Patterns');
-
-addCard(slide, 0.35, 1.15, 9.3, 5.75, colors.white, colors.lightBlue, 0.05);
-
-slide.addText('Descriptive Findings from M2:', {
-  x: 0.65,
-  y: 1.35,
-  w: 8.7,
-  h: 0.25,
-  fontFace: 'Trebuchet MS',
-  fontSize: 13,
-  bold: true,
-  color: colors.navy,
-});
-
-const edaPoints = [
-  'Positive moderate correlation between lobbying expenditure and firm performance (Return on Assets)',
-  'Effect exhibits time lag: strongest association at 1–2-year lags, not contemporaneous',
-  'Heterogeneous effects: stronger in larger and policy-exposed firms',
-  'Smaller firms show weaker or no relationship; size-based mechanism likely relevant',
-  'Outlier firms with extreme lobbying spending have disproportionate leverage on results',
-  'Log-scaling and trimming reduce magnitude but preserve positive direction in most cases',
-  'Adding controls (size, industry, year effects) attenuates coefficient but does not eliminate it',
-];
-
-addBulletText(slide, 0.8, 1.7, 8.4, 4.8, edaPoints, 10);
-
-addFooter(slide, 'M2 Hypothesis Development: Positive effect expected, strongest at lag 1–2, larger for big firms');
-
-// ===== SLIDE 5: DATA QUALITY & SAMPLE OVERVIEW =====
-slide = addSlide();
-addBackground(slide);
-addTopLabel(slide, 'Data Quality');
-addSlideTitle(slide, 'Sample Characteristics and Coverage');
-
-// Table
-const dataTable = [
-  ['Dataset', 'Rows', 'Unique Firms', 'Key Identifier'],
-  ['Financials', '4,932', '1,375', 'CIK'],
-  ['Lobbying', '11,619', '1,534', 'GVKEY'],
-  ['Merged (Full)', '5,099', '1,375', 'CIK'],
-  ['Balanced Panel', '836', '66', 'CIK, 2010–2020'],
-];
-
-const tbl = slide.addTable(dataTable, {
-  x: 0.35,
-  y: 1.15,
-  w: 9.3,
-  h: 2.2,
-  border: { pt: 1, color: colors.lightBlue },
-  fill: colors.white,
-  align: 'center',
-  valign: 'middle',
-  fontFace: 'Aptos',
-  fontSize: 10,
-  headerFill: colors.navy,
-  headerFontColor: colors.white,
-  margin: [0.08, 0.08, 0.08, 0.08],
-  colW: [2.5, 1.5, 2.2, 2.6],
-});
-
-slide.addText('Data Quality Notes:', {
-  x: 0.35,
-  y: 3.5,
-  w: 9.3,
-  h: 0.25,
-  fontFace: 'Trebuchet MS',
-  fontSize: 12,
-  bold: true,
-  color: colors.navy,
-});
-
-const qualityNotes = [
-  'Lobbying data sparse: 95.2% missing in full merged panel (many firms not in lobbying universe)',
-  'Mean ROA: 56.94 (winsorized); highly variable due to outliers and firm heterogeneity',
-  'No explicit industry codes; size-based proxy used for heterogeneity estimation',
-  'Balanced panel (66 firms) is subset of full sample; may not be representative of all firms',
-];
-
-addBulletText(slide, 0.35, 3.85, 9.3, 2.9, qualityNotes, 9.5);
-
-// ===== SLIDE 6: M3 MAIN RESULTS =====
-slide = addSlide();
-addBackground(slide);
-addTopLabel(slide, 'Milestone 3');
-addSlideTitle(slide, 'Main Econometric Results');
-
-addCard(slide, 0.35, 1.15, 9.3, 5.75, colors.white, colors.lightBlue, 0.05);
-
-slide.addText('Two-Way Fixed Effects Panel Regression (Firm and Year FE, Clustered SEs)', {
-  x: 0.65,
-  y: 1.35,
-  w: 8.7,
-  h: 0.28,
-  fontFace: 'Trebuchet MS',
-  fontSize: 12,
-  bold: true,
-  color: colors.navy,
-});
-
-const mainResults = [
-  'Baseline coefficient (lagged lobbying): β = –174.59 (SE = 116.93, p = 0.1354, N = 2,125)',
-  'Economic interpretation: $1M increase in lobbying → 174.59 percentage-point decrease in ROA',
-  'Equivalent: $100K increase → 17.46 percentage-point decline in ROA',
-  'Not statistically significant at α = 0.05; 95% confidence interval includes zero',
-  'Conclusion: Negative point estimate, but imprecise and not robust to specification changes',
-];
-
-addBulletText(slide, 0.8, 1.75, 8.4, 3.8, mainResults, 10);
-
-// Key finding box
-slide.addShape(prs.ShapeType.roundRect, {
-  x: 0.65,
-  y: 5.65,
-  w: 8.4,
-  h: 1,
-  rectRadius: 0.1,
-  fill: { color: colors.warning },
-  line: { color: colors.warningBorder, pt: 0.06 },
-});
-
-slide.addText('⚠ Key Finding: Evidence for negative association is weaker than EDA\'s positive findings, suggesting alternative mechanisms or model sensitivity.', {
-  x: 0.8,
-  y: 5.75,
-  w: 8.1,
-  h: 0.8,
-  fontFace: 'Aptos',
-  fontSize: 9.5,
-  color: colors.darkText,
-  align: 'left',
-  valign: 'middle',
-});
-
-// ===== SLIDE 7: ROBUSTNESS CHECKS SUMMARY =====
-slide = addSlide();
-addBackground(slide);
-addTopLabel(slide, 'Robustness');
-addSlideTitle(slide, 'Robustness Checks: Coefficient Stability');
-
-const robustTable = [
-  ['Specification', 'Coefficient', 'SE', 'p-value', 'N'],
-  ['Baseline (Lag 1)', '–174.59', '116.93', '0.1354', '2,125'],
-  ['Lag 2', '–95.35', '86.70', '0.2715', '1,700'],
-  ['Lag 3', '38.47', '84.26', '0.6480', '1,372'],
-  ['Lead 1 (Placebo)', '–302.73', '166.41', '0.0689', '2,129'],
-  ['Excluding 2020', '–109.19', '72.22', '0.1305', '1,911'],
-  ['Small Firms', '–5,753.85', '4,059.05', '0.1563', '671'],
-  ['Large Firms', '–24.09', '5.25', '0.0000', '1,454'],
-];
-
-const robustTbl = slide.addTable(robustTable, {
-  x: 0.35,
-  y: 1.15,
-  w: 9.3,
-  h: 3.7,
-  border: { pt: 0.5, color: colors.lightBlue },
-  fill: colors.white,
-  align: 'center',
-  valign: 'middle',
-  fontFace: 'Aptos',
-  fontSize: 8.5,
-  headerFill: colors.navy,
-  headerFontColor: colors.white,
-  margin: [0.06, 0.08, 0.06, 0.08],
-});
-
-slide.addText('Interpretation:', {
-  x: 0.35,
-  y: 4.95,
-  w: 9.3,
-  h: 0.25,
-  fontFace: 'Trebuchet MS',
-  fontSize: 11,
-  bold: true,
-  color: colors.navy,
-});
-
-const interpPoints = [
-  'Sign consistency: Negative across lags 1–2; positive at lag 3 suggests direction instability',
-  'Lead effect significant at p < 0.10 raises reverse-causality concerns: lower profitability may prompt lobbying',
-  'Heterogeneity: Small firms show extreme, imprecise effect; large firms show consistent, negative effect (p < 0.001)',
-  'Excluding 2020 maintains negative direction but reduces precision, suggesting COVID-19 did not drive main result',
-];
-
-addBulletText(slide, 0.35, 5.25, 9.3, 1.65, interpPoints, 9);
-
-// ===== SLIDE 8: FIRM SIZE HETEROGENEITY =====
-slide = addSlide();
-addBackground(slide);
-addTopLabel(slide, 'Heterogeneity');
-addSlideTitle(slide, 'Differential Effects by Firm Size');
-
-// Left card
-addCard(slide, 0.35, 1.15, 4.4, 5.5, colors.white, colors.lightBlue, 0.05);
-
-slide.addShape(prs.ShapeType.rect, {
-  x: 0.35,
-  y: 1.15,
-  w: 0.05,
-  h: 5.5,
-  fill: { color: colors.accentBlue },
-  line: { type: 'none' },
-});
-
-addCardTitle(slide, 0.6, 1.32, 4, 'Large Firms');
-
-const largePoints = [
-  'Coefficient: β = –24.09 (SE = 5.25, p < 0.001)',
-  'Precisely estimated; statistically significant',
-  'Small magnitude but consistent',
-  'Interpretation: Defensive lobbying by larger, more exposed firms',
-];
-
-addBulletText(slide, 0.6, 1.65, 4, 4.8, largePoints, 9);
-
-// Right card
-addCard(slide, 5.25, 1.15, 4.4, 5.5, colors.white, colors.lightBlue, 0.05);
-
-slide.addShape(prs.ShapeType.rect, {
-  x: 5.25,
-  y: 1.15,
-  w: 0.05,
-  h: 5.5,
-  fill: { color: colors.accentBlue },
-  line: { type: 'none' },
-});
-
-addCardTitle(slide, 5.5, 1.32, 4, 'Small Firms');
-
-const smallPoints = [
-  'Coefficient: β = –5,753.85 (SE = 4,059.05, p = 0.156)',
-  'Very large magnitude but imprecise',
-  'Not statistically significant',
-  'Likely driven by few extreme spenders; high noise in small-firm lobbying',
-];
-
-addBulletText(slide, 5.5, 1.65, 4, 4.8, smallPoints, 9);
-
-addFooter(slide, 'Pattern suggests: Larger firms\' lobbying may reflect strategic regulatory engagement; smaller firms show sparse, ad hoc behavior.');
-
-// ===== SLIDE 9: ALTERNATIVE SPECIFICATIONS =====
-slide = addSlide();
-addBackground(slide);
-addTopLabel(slide, 'Extensions');
-addSlideTitle(slide, 'Alternative Specifications and Diagnostics');
-
-addCard(slide, 0.35, 1.15, 9.3, 5.75, colors.white, colors.lightBlue, 0.05);
-
-const altSpecs = [
-  'Three-way FE with industry-by-year interactions: β = –159.48 (p = 0.367) — sign remains negative, precision similar to baseline',
-  'Staggered difference-in-differences (Callaway-Sant\'Anna): Average treatment effect ≈ –338.79 pp; large, negative, but uncertain',
-  'Cluster bootstrap 95% CI: [–517.62, 149.65] — wide interval spans positive and negative, confirming low precision',
-  'Breusch-Pagan test for heteroskedasticity: p < 0.0001; justifies clustered SEs over homoskedastic OLS',
-  'Variance Inflation Factors (VIF) for controls: max 2.74; multicollinearity not a concern',
-  'Diagnostic plots (Q-Q, residvals-vs-fitted): suggest non-ideal residual behavior; pattern consistent with sparse, heterogeneous panel',
-];
-
-addBulletText(slide, 0.65, 1.35, 8.7, 5.35, altSpecs, 9.5);
-
-// ===== SLIDE 10: ARIMA BENCHMARK =====
-slide = addSlide();
-addBackground(slide);
-addTopLabel(slide, 'Benchmark');
-addSlideTitle(slide, 'Time-Series Benchmark: ARIMA Model');
-
-addCard(slide, 0.35, 1.15, 9.3, 5.75, colors.white, colors.lightBlue, 0.05);
-
-slide.addText('ARIMA(0,1,0) Specification (Random Walk with Differencing):', {
-  x: 0.65,
-  y: 1.35,
-  w: 8.7,
-  h: 0.26,
-  fontFace: 'Trebuchet MS',
-  fontSize: 12,
-  bold: true,
-  color: colors.navy,
-});
-
-const arimaPoints = [
-  'Augmented Dickey-Fuller test: p-value = 0.2287 (non-stationary; differencing applied)',
-  'Selected order: (0, 1, 0) based on AIC minimization',
-  'Out-of-sample RMSE: 523.53',
-  'Naive benchmark RMSE (carry-forward): 523.53',
-  'No predictive gain from ARIMA vs. simple extrapolation; aggregate ROA trends not easily forecasted by lags alone',
-  '→ Implication: Annual aggregate profitability dynamics driven by factors other than recent own history',
-];
-
-addBulletText(slide, 0.8, 1.7, 8.4, 4.8, arimaPoints, 10);
-
-// ===== SLIDE 11: MECHANISMS & INTERPRETATION =====
-slide = addSlide();
-addBackground(slide);
-addTopLabel(slide, 'Discussion');
-addSlideTitle(slide, 'Mechanisms and Interpretation');
-
-// Left card
-addCard(slide, 0.35, 1.15, 4.4, 5.5, colors.white, colors.lightBlue, 0.05);
-
-slide.addShape(prs.ShapeType.rect, {
-  x: 0.35,
-  y: 1.15,
-  w: 0.05,
-  h: 5.5,
-  fill: { color: colors.accentBlue },
-  line: { type: 'none' },
-});
-
-addCardTitle(slide, 0.6, 1.32, 4, 'Possible Explanations');
-
-const mechPoints = [
-  'Defensive lobbying: Firms spend to prevent worse outcomes',
-  'Policy uncertainty: Regulatory exposure drives both lobbying and lower profitability',
-  'Selection effect: Worse-performing firms spend more on lobbying',
-  'Omitted factors: Industry shocks or managerial quality confound the relationship',
-];
-
-addBulletText(slide, 0.6, 1.65, 4, 4.8, mechPoints, 8.5);
-
-// Right card
-addCard(slide, 5.25, 1.15, 4.4, 5.5, colors.white, colors.lightBlue, 0.05);
-
-slide.addShape(prs.ShapeType.rect, {
-  x: 5.25,
-  y: 1.15,
-  w: 0.05,
-  h: 5.5,
-  fill: { color: colors.accentBlue },
-  line: { type: 'none' },
-});
-
-addCardTitle(slide, 5.5, 1.32, 4, 'Data Interpretation');
-
-const dataInterpPoints = [
-  'Evidence not conclusive: Both positive and negative associations possible depending on specification',
-  'Firm-level heterogeneity dominates: Large firm effect robust, small firm effect noisy',
-  'Temporal instability: Different lags yield different signs; suggests complex dynamics',
-  'Strong lead effect: Reverse causality likely; low-performing firms increase spending',
-];
-
-addBulletText(slide, 5.5, 1.65, 4, 4.8, dataInterpPoints, 8.5);
-
-// ===== SLIDE 12: LIMITATIONS & RECOMMENDATIONS =====
-slide = addSlide();
-addBackground(slide);
-addTopLabel(slide, 'Conclusions');
-addSlideTitle(slide, 'Limitations and Future Directions');
-
-addCard(slide, 0.35, 1.15, 9.3, 5.75, colors.white, colors.lightBlue, 0.05);
-
-slide.addText('Study Limitations:', {
-  x: 0.65,
-  y: 1.35,
-  w: 8.7,
-  h: 0.25,
-  fontFace: 'Trebuchet MS',
-  fontSize: 12,
-  bold: true,
-  color: colors.navy,
-});
-
-const limitations = [
-  'Sparse lobbying observations: 95%+ missing data in merged panel; selection bias toward large, visible firms',
-  'Measurement: ROA (profitability) may not capture long-term firm value or stock returns; accounting-based metric only',
-  'Confounding: Many unobserved factors (managerial quality, competition, technology) co-vary with lobbying',
-  'Reverse causality: Lead effect suggests weaker-performing firms lobby more; inference difficult without instruments',
-];
-
-addBulletText(slide, 0.65, 1.7, 8.7, 2.1, limitations, 10);
-
-slide.addText('Future Research Directions:', {
-  x: 0.65,
-  y: 3.9,
-  w: 8.7,
-  h: 0.25,
-  fontFace: 'Trebuchet MS',
-  fontSize: 12,
-  bold: true,
-  color: colors.navy,
-});
-
-const directions = [
-  'Acquire lobbying instruments (regulatory exposure indices, policy indices) to isolate causal effects',
-  'Extend to stock market measures (returns, Tobin\'s Q) to capture investor perspective on lobbying value',
-  'Build dynamic panel models with lagged dependent variables; address Nickell bias carefully',
-  'Incorporate issue-level lobbying strategies (defense, offense) to refine mechanistic understanding',
-];
-
-addBulletText(slide, 0.65, 4.25, 8.7, 2.45, directions, 10);
-
-// ===== SLIDE 13: SUMMARY & CONCLUSIONS =====
-slide = addSlide();
-addBackground(slide);
-addTopLabel(slide, 'Final');
-addSlideTitle(slide, 'Key Takeaways');
-
-// Main summary box
-slide.addShape(prs.ShapeType.roundRect, {
-  x: 0.35,
-  y: 1.15,
-  w: 9.3,
-  h: 1.3,
-  fill: { color: colors.skyBlue },
-  line: { color: colors.accentBlue, pt: 0.08 },
-  rectRadius: 0.12,
-});
-
-slide.addText('Research Question: What is the relationship between corporate lobbying and firm profitability?', {
-  x: 0.55,
-  y: 1.25,
-  w: 8.9,
-  h: 0.28,
-  fontFace: 'Trebuchet MS',
-  fontSize: 12,
-  bold: true,
-  color: colors.navy,
-});
-
-slide.addText('Answer: Evidence is mixed and model-dependent. Panel regressions suggest a negative association (β ≈ –174.59), but the effect is imprecise, driven by reverse causality, and inconsistent across specifications. EDA showed positive correlations in bivariate relationships, but fixed-effects models reveal complexity and firm-size heterogeneity.', {
-  x: 0.55,
-  y: 1.55,
-  w: 8.9,
-  h: 0.75,
-  fontFace: 'Aptos',
-  fontSize: 10,
-  color: colors.darkText,
-  valign: 'top',
-});
-
-// Three-column summary
-slide.addText('M1: Data Integration', {
-  x: 0.35,
-  y: 2.6,
-  w: 2.8,
-  h: 0.22,
-  fontFace: 'Trebuchet MS',
-  fontSize: 11,
-  bold: true,
-  color: colors.accentBlue,
-  align: 'center',
-});
-
-const m1Summary = [
-  '5,099 firm-year obs.',
-  '1,375 unique firms',
-  '2010–2020 period',
-  '836 balanced panel',
-];
-
-addBulletText(slide, 0.35, 2.85, 2.8, 2.2, m1Summary, 8.5);
-
-slide.addText('M2: EDA Insights', {
-  x: 3.6,
-  y: 2.6,
-  w: 2.8,
-  h: 0.22,
-  fontFace: 'Trebuchet MS',
-  fontSize: 11,
-  bold: true,
-  color: colors.accentBlue,
-  align: 'center',
-});
-
-const m2Summary = [
-  'Positive correlations',
-  'Lag 1–2 strongest',
-  'Size heterogeneity',
-  'Sparse outliers',
-];
-
-addBulletText(slide, 3.6, 2.85, 2.8, 2.2, m2Summary, 8.5);
-
-slide.addText('M3: Regression Results', {
-  x: 6.85,
-  y: 2.6,
-  w: 2.8,
-  h: 0.22,
-  fontFace: 'Trebuchet MS',
-  fontSize: 11,
-  bold: true,
-  color: colors.accentBlue,
-  align: 'center',
-});
-
-const m3Summary = [
-  'β = –174.59 (p=0.135)',
-  'Not sig. at α=0.05',
-  'Reverse causality',
-  'Model sensitive',
-];
-
-addBulletText(slide, 6.85, 2.85, 2.8, 2.2, m3Summary, 8.5);
-
-// Final insight boxes
-addCard(slide, 0.35, 5.2, 9.3, 2.1, colors.warning, colors.warningBorder, 0.06);
-
-slide.addText('Conclusion:', {
-  x: 0.55,
-  y: 5.35,
-  w: 8.9,
-  h: 0.22,
-  fontFace: 'Trebuchet MS',
-  fontSize: 11,
-  bold: true,
-  color: colors.darkText,
-});
-
-slide.addText('The causal relationship between corporate lobbying and firm profitability remains unclear. Empirical evidence leans toward a negative association in fixed-effects models, but this finding is imprecise and likely confounded by reverse causality. Strategic lobbying may be a sign of defensive positioning by firms facing headwinds rather than a driver of superior returns. Strong firm-size heterogeneity suggests differentiated mechanisms: large, visible firms engage in routine regulatory management; small firms show sporadic, ad-hoc behavior. Future research should employ causal instruments and longer time-series to resolve these ambiguities.', {
-  x: 0.55,
-  y: 5.6,
-  w: 8.9,
-  h: 1.6,
-  fontFace: 'Aptos',
-  fontSize: 9,
-  color: colors.darkText,
-  valign: 'top',
-  align: 'left',
-});
-
-// Write presentation to file
-const outputPath = path.join(__dirname, '..', 'results', 'reports', 'Capstone_Research_Presentation.pptx');
-prs.writeFile(outputPath);
-console.log(`✓ Enhanced presentation created: ${outputPath}`);
